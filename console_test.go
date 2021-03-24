@@ -9,18 +9,30 @@ import (
 func TestEncodeKey(t *testing.T) {
 	s := NewSystem(nil)
 
-	s.encodeKey(KEY_AUX3)
-	got := formatBytes(<-s.queue)
-	expected := "[10 02] [00 03] [00 08 00 00 00 08 00 00] [00 25] [10 03]"
-	require.Equal(t, expected, got)
-
-	s.encodeKey(KEY_MINUS)
-	got = formatBytes(<-s.queue)
-	expected = "[10 02] [00 03] [00 00 01 00 00 00 01 00] [00 17] [10 03]"
-	require.Equal(t, expected, got)
-
-	s.encodeKey(KEY_PLUS)
-	got = formatBytes(<-s.queue)
-	expected = "[10 02] [00 03] [00 00 02 00 00 00 02 00] [00 19] [10 03]"
-	require.Equal(t, expected, got)
+	for key, expected := range map[KeyType]string{
+		KEY_MINUS:    "[10 02] [00 03] [10 00 00 00 00 10 00 00 00 00] [00 35] [10 03]",
+		KEY_PLUS:     "[10 02] [00 03] [20 00 00 00 20 00 00 00] [00 55] [10 03]",
+		KEY_HEATER:   "[10 02] [00 03] [00 00 04 00 00 00 04 00] [00 1d] [10 03]",
+		KEY_SERVICE:  "[10 02] [00 03] [08 00 00 00 08 00 00 00] [00 25] [10 03]",
+		KEY_MENU:     "[10 02] [00 03] [02 00 00 00 02 00 00 00] [00 19] [10 03]",
+		KEY_RIGHT:    "[10 02] [00 03] [01 00 00 00 01 00 00 00] [00 17] [10 03]",
+		KEY_LEFT:     "[10 02] [00 03] [04 00 00 00 04 00 00 00] [00 1d] [10 03]",
+		KEY_POOL_SPA: "[10 02] [00 03] [40 00 00 00 40 00 00 00] [00 95] [10 03]",
+		KEY_FILTER:   "[10 02] [00 03] [80 00 00 00 80 00 00 00] [01 15] [10 03]",
+		KEY_LIGHTS:   "[10 02] [00 03] [00 01 00 00 00 01 00 00] [00 17] [10 03]",
+		KEY_VALVE3:   "[10 02] [00 03] [00 00 01 00 00 00 01 00] [00 17] [10 03]",
+		KEY_VALVE4:   "[10 02] [00 03] [00 00 02 00 00 00 02 00] [00 19] [10 03]",
+		KEY_AUX1:     "[10 02] [00 03] [00 02 00 00 00 02 00 00] [00 19] [10 03]",
+		KEY_AUX2:     "[10 02] [00 03] [00 04 00 00 00 04 00 00] [00 1d] [10 03]",
+		KEY_AUX3:     "[10 02] [00 03] [00 08 00 00 00 08 00 00] [00 25] [10 03]",
+		KEY_AUX4:     "[10 02] [00 03] [00 10 00 00 00 00 10 00 00 00] [00 35] [10 03]",
+		KEY_AUX5:     "[10 02] [00 03] [00 20 00 00 00 20 00 00] [00 55] [10 03]",
+		KEY_AUX6:     "[10 02] [00 03] [00 40 00 00 00 40 00 00] [00 95] [10 03]",
+	} {
+		t.Run(key.String(), func(t *testing.T) {
+			s.encodeKey(key)
+			got := formatBytes(<-s.queue)
+			require.Equal(t, expected, got)
+		})
+	}
 }

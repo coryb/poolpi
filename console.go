@@ -123,12 +123,12 @@ func main() {
 					rawData = rawData[:0]
 					continue
 				}
-				eventType := binary.BigEndian.Uint16(data[:2])
+				eventType := newEventType(data[:2])
 				eventData := data[2:]
-				if EventType(eventType) != EVENT_READY || withReady {
+				if eventType != EVENT_READY || withReady {
 					rawLog.Print(formatBytes(rawData))
 				}
-				sys.event(EventType(eventType), eventData)
+				sys.event(eventType, eventData)
 				rawData = rawData[:0]
 			default:
 				log.Printf("Unknown Sequence: 0x10%x", b)
@@ -144,61 +144,63 @@ func main() {
 }
 
 type EventType uint16
-type KeyType uint16
+type KeyType uint32
 
 const (
 	EVENT_READY        EventType = 0x0101
-	EVENT_LEDS                   = 0x0102
-	EVENT_MSG                    = 0x0103
-	EVENT_LONG_DISPLAY           = 0x040a
-	EVENT_PUMP_REQUEST           = 0x0c01
-	EVENT_PUMP_STATUS            = 0x000c
-	EVENT_LOCAL_KEY              = 0x0002 // key press on main console
-	EVENT_REMOTE_KEY             = 0x0003 // key press on wired remote
-	EVENT_WIRELESS_KEY           = 0x0083 // key press on wireless remote
+	EVENT_LEDS         EventType = 0x0102
+	EVENT_MSG          EventType = 0x0103
+	EVENT_LONG_DISPLAY EventType = 0x040a
+	EVENT_PUMP_REQUEST EventType = 0x0c01
+	EVENT_PUMP_STATUS  EventType = 0x000c
+	EVENT_LOCAL_KEY    EventType = 0x0002 // key press on main console
+	EVENT_REMOTE_KEY   EventType = 0x0003 // key press on wired remote
+	EVENT_WIRELESS_KEY EventType = 0x0083 // key press on wireless remote
 
-	KEY_NONE     KeyType = 0x0000
-	KEY_RIGHT            = 0x0001
-	KEY_MENU             = 0x0002
-	KEY_LEFT             = 0x0004
-	KEY_SERVICE          = 0x0008
-	KEY_MINUS            = 0x0010
-	KEY_PLUS             = 0x0020
-	KEY_POOL_SPA         = 0x0040
-	KEY_FILTER           = 0x0080
-	KEY_LIGHTS           = 0x0100
-	KEY_AUX1             = 0x0200
-	KEY_AUX2             = 0x0400
-	KEY_AUX3             = 0x0800
-	KEY_AUX4             = 0x1000
-	KEY_AUX5             = 0x2000
-	KEY_AUX6             = 0x4000
-	KEY_AUX7             = 0x8000
+	KEY_NONE     KeyType = 0x00000
+	KEY_RIGHT    KeyType = 0x00001
+	KEY_MENU     KeyType = 0x00002
+	KEY_LEFT     KeyType = 0x00004
+	KEY_SERVICE  KeyType = 0x00008
+	KEY_MINUS    KeyType = 0x00010
+	KEY_PLUS     KeyType = 0x00020
+	KEY_POOL_SPA KeyType = 0x00040
+	KEY_FILTER   KeyType = 0x00080
+	KEY_LIGHTS   KeyType = 0x00100
+	KEY_AUX1     KeyType = 0x00200
+	KEY_AUX2     KeyType = 0x00400
+	KEY_AUX3     KeyType = 0x00800
+	KEY_AUX4     KeyType = 0x01000
+	KEY_AUX5     KeyType = 0x02000
+	KEY_AUX6     KeyType = 0x04000
+	KEY_AUX7     KeyType = 0x08000
+	KEY_VALVE3   KeyType = 0x10000
+	KEY_VALVE4   KeyType = 0x20000
+	KEY_HEATER   KeyType = 0x40000
 )
 
-func decodeLeds(data []byte) []string {
-	leds := []string{}
-	bitmasks := [4][8]string{{
-		"Heater1", "Valve3", "Check System", "Pool", "Spa", "Filter", "Lights", "Aux1",
-	}, {
-		"Aux2", "Service", "Aux3", "Aux4", "Aux5", "Aux6", "Valve4/Heater2", "Spillover",
-	}, {
-		"System off", "Aux7", "Aux8", "Aux9", "Aux10", "Aux11", "Aux12", "Aux13",
-	}, {
-		"Aux14", "Super Chlorinate",
-	}}
-	for byteIx, bitmask := range bitmasks {
-		for bitIx, label := range bitmask {
-			if data[byteIx]&(0b1<<bitIx) > 0 {
-				leds = append(leds, label)
-			}
-		}
-	}
-	return leds
+func newEventType(b []byte) EventType {
+	return EventType(binary.BigEndian.Uint16(b[:2]))
 }
 
-func decodeKey(key KeyType) string {
-	switch key {
+func (et EventType) ToBytes() []byte {
+	seq := make([]byte, 2)
+	binary.BigEndian.PutUint16(seq, uint16(et))
+	return seq
+}
+
+func newKeyType(b []byte) KeyType {
+	return KeyType(binary.LittleEndian.Uint32(b[:4]))
+}
+
+func (kt KeyType) ToBytes() []byte {
+	seq := make([]byte, 4)
+	binary.LittleEndian.PutUint32(seq, uint32(kt))
+	return seq
+}
+
+func (kt KeyType) String() string {
+	switch kt {
 	case KEY_NONE:
 		return "NONE"
 	case KEY_RIGHT:
@@ -233,8 +235,35 @@ func decodeKey(key KeyType) string {
 		return "AUX6"
 	case KEY_AUX7:
 		return "AUX7"
+	case KEY_VALVE3:
+		return "VALVE3"
+	case KEY_VALVE4:
+		return "VALVE4"
+	case KEY_HEATER:
+		return "HEATER"
 	}
 	return "UNKNOWN"
+}
+
+func decodeLeds(data []byte) []string {
+	leds := []string{}
+	bitmasks := [4][8]string{{
+		"Heater1", "Valve3", "Check System", "Pool", "Spa", "Filter", "Lights", "Aux1",
+	}, {
+		"Aux2", "Service", "Aux3", "Aux4", "Aux5", "Aux6", "Valve4/Heater2", "Spillover",
+	}, {
+		"System off", "Aux7", "Aux8", "Aux9", "Aux10", "Aux11", "Aux12", "Aux13",
+	}, {
+		"Aux14", "Super Chlorinate",
+	}}
+	for byteIx, bitmask := range bitmasks {
+		for bitIx, label := range bitmask {
+			if data[byteIx]&(0b1<<bitIx) > 0 {
+				leds = append(leds, label)
+			}
+		}
+	}
+	return leds
 }
 
 type system struct {
@@ -257,7 +286,9 @@ func formatBytes(b []byte) string {
 	l := len(b)
 	// Expected format: DLE+STX CMD[2] DATA[...] CRC[2] DLE+ETX
 
-	// special handling for message
+	// special handling for message, last bit in data is "flags" also they use
+	// the high bit to indicate "blink".  For logging if not graphic char
+	// (excluding space) just print the hex value.
 	if bytes.Equal(b[2:4], []byte{0x01, 0x03}) {
 		data := []string{}
 		for _, c := range b[4 : l-5] {
@@ -273,7 +304,6 @@ func formatBytes(b []byte) string {
 			}
 		}
 		return fmt.Sprintf("[% x] [% x] [%s] [% x] [% x] [% x]", b[:2], b[2:4], strings.Join(data, " "), b[l-5:l-4], b[l-4:l-2], b[l-2:])
-
 	}
 	return fmt.Sprintf("[% x] [% x] [% x] [% x] [% x]", b[:2], b[2:4], b[4:l-4], b[l-4:l-2], b[l-2:])
 }
@@ -314,29 +344,36 @@ loop:
 	return prompt
 }
 
-func (s *system) encodeKey(key KeyType) {
-	msg := []byte{
-		FRAME_DLE, FRAME_STX,
-		0x0, 0x0, // type
-		0x0, 0x0, 0x0, 0x0, // key
-		0x0, 0x0, 0x0, 0x0, // repeat
-		0x0, 0x0, //crc
-		FRAME_DLE, FRAME_ETX,
+func escDLE(in []byte) []byte {
+	for i, b := range in {
+		if b == FRAME_DLE {
+			in = append(in[:i+1], append([]byte{FRAME_ESC}, in[i+1:]...)...)
+		}
 	}
-	binary.BigEndian.PutUint16(msg[2:], EVENT_REMOTE_KEY)
-	// copy(msg[4:8], key)
-	// copy(msg[8:12], key)
-	binary.BigEndian.PutUint32(msg[4:], uint32(key))
-	binary.BigEndian.PutUint32(msg[8:], uint32(key))
+	return in
+}
+
+func crc(b []byte) []byte {
 	var crc uint16
-	for _, c := range msg[:12] {
+	for _, c := range b {
 		crc += uint16(c)
 	}
-	binary.BigEndian.PutUint16(msg[12:], crc)
+	out := make([]byte, 2)
+	binary.BigEndian.PutUint16(out, crc)
+	return out
+}
+
+func (s *system) encodeKey(key KeyType) {
+	msg := []byte{FRAME_DLE, FRAME_STX}
+	msg = append(msg, EVENT_REMOTE_KEY.ToBytes()...)
+	msg = append(msg, escDLE(key.ToBytes())...)
+	msg = append(msg, escDLE(key.ToBytes())...)
+	msg = append(msg, crc(msg)...)
+	msg = append(msg, FRAME_DLE, FRAME_ETX)
 	s.queue <- msg
 }
 
-func messageWidth(data []byte) int {
+func messageLineWidth(data []byte) int {
 	// data is 16/32 or 20/40 + 1 char at end for "display flags"
 	if (len(data)-1)%20 == 0 {
 		return 20
@@ -345,7 +382,7 @@ func messageWidth(data []byte) int {
 }
 
 func messagePlain(data []byte) (text string) {
-	width := messageWidth(data)
+	width := messageLineWidth(data)
 	for i := 0; i < len(data)-1; i += width {
 		line := bytes.TrimSpace(data[i : i+width])
 		if len(line) == 0 {
@@ -362,7 +399,7 @@ func messagePlain(data []byte) (text string) {
 }
 
 func messageFancy(data []byte) (text string) {
-	width := messageWidth(data)
+	width := messageLineWidth(data)
 	for i := 0; i < len(data)-1; i += width {
 		line := bytes.TrimSpace(data[i : i+width])
 		if len(line) == 0 {
@@ -375,7 +412,11 @@ func messageFancy(data []byte) (text string) {
 			if r&0x80 > 0 {
 				text += aurora.SlowBlink(string(r & 0x7f)).String()
 			} else {
-				text += string(r & 0x7f)
+				if r&0x7f == '_' {
+					text += "°"
+				} else {
+					text += string(r & 0x7f)
+				}
 			}
 		}
 	}
@@ -389,10 +430,9 @@ func (s *system) event(typ EventType, data []byte) {
 	}
 	switch typ {
 	case EVENT_READY:
-		// TODO send any outgoing messages now
 		select {
 		case m := <-s.queue:
-			maybeLog("OUTPUT: %x", m)
+			maybeLog("OUTPUT: %s", formatBytes(m))
 			s.s.Write(m)
 		default:
 		}
@@ -403,7 +443,6 @@ func (s *system) event(typ EventType, data []byte) {
 	case EVENT_LEDS:
 		// 1st 4 bytes are for light indicators
 		// 2nd 4 bytes are for blink indicators
-		// maybeLog("Lights: %08b Blink: %08b", data[:4], data[4:])
 		leds := decodeLeds(data[:4])
 		blinking := decodeLeds(data[4:])
 		maybeLog("LEDs: %v  Blinking: %v", leds, blinking)
@@ -411,11 +450,6 @@ func (s *system) event(typ EventType, data []byte) {
 		speed := binary.BigEndian.Uint16(data)
 		maybeLog("Pump speed request: %d%%", speed)
 	case EVENT_PUMP_STATUS:
-		// hex := []string{}
-		// for _, b := range data {
-		// 	hex = append(hex, fmt.Sprintf("%X", b))
-		// }
-		// maybeLog("PumpStatus %04x Data: %v", typ, hex)
 		speed := data[2]
 		power := ((((int(data[3]) & 0xf0) >> 4) * 1000) +
 			((int(data[3]) & 0x0f) * 100) +
@@ -423,22 +457,18 @@ func (s *system) event(typ EventType, data []byte) {
 			(int(data[4]) & 0x0f))
 		maybeLog("Pump speed status: %d%% %dW", speed, power)
 	case EVENT_REMOTE_KEY:
-		// Button Presse events are frequently duplicated
-		// we will get [KEY KEY] on the original press
-		// and [KEY NONE] on subsequent 100ms triggers where the key is still pressed
-		key := binary.BigEndian.Uint32(data[:4])
-		upper := binary.BigEndian.Uint32(data[4:])
-		if KeyType(upper) == KEY_NONE {
+		// Button Press events are frequently repeated we will get [KEY KEY] on
+		// the original press and [KEY NONE] on subsequent 100ms triggers where
+		// the key is still pressed
+		key := newKeyType(data[:4])
+		upper := newKeyType(data[4:])
+		if upper == KEY_NONE {
 			// only report original keypress
 			return
 		}
-		maybeLog("Button: %s", decodeKey(KeyType(key)))
+		maybeLog("Button: %s", key)
 	default:
-		hex := []string{}
-		for _, b := range data {
-			hex = append(hex, fmt.Sprintf("%X", b))
-		}
-		log.Printf("Event %04x Data: %v", typ, hex)
+		log.Printf("Event: [% x] [% x]", typ.ToBytes(), data)
 	}
 
 	// Jandy Valve?? Spa/Pool
