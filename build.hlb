@@ -27,10 +27,6 @@ fs console() {
 fs _runProtoc() {
 	image "golang:1.16-alpine"
 	run "apk add -U protoc"
-	run "go mod download" with option {
-		romount "/src" modSrc
-		goCache "/root"
-	}
 	run "go install google.golang.org/grpc/cmd/protoc-gen-go-grpc google.golang.org/protobuf/cmd/protoc-gen-go" with option {
 		romount "/src" modSrc
 		goCache "/root"
@@ -93,6 +89,10 @@ option::run romount(string d, fs src) {
 
 option::run goCache(string homedir) {
 	env "GOBIN" "/usr/bin"
-    mount scratch format("%s/.cache/go-build", homedir) with cache(format("poolpi/go-build%s" homedir), "private")
-    mount scratch "/go/pkg/mod" with cache(format("poolpi/go-mod%s", homedir), "private")
+
+	env "GOCACHE" "${homedir}/.cache/go-build"
+    mount scratch "${homedir}/.cache/go-build" with cache("poolpi/go-build${homedir}", "private")
+	
+	env "GOMODCACHE" "/go/pkg/mod"
+    mount scratch "/go/pkg/mod" with cache("poolpi/go-mod${homedir}", "private")
 }
