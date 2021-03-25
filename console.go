@@ -27,11 +27,10 @@ func init() {
 	flag.BoolVar(&withReady, "ready", false, "include READY messages in binary log")
 }
 
-// ASCII constants for serial transmissions
-const FRAME_DLE = 0x10 // "data link escape"
-const FRAME_ESC = 0x00 // escape
-const FRAME_STX = 0x02 // start
-const FRAME_ETX = 0x03 // end
+const FrameDLE = 0x10 // "data link escape"
+const FrameESC = 0x00 // escape
+const FrameSTX = 0x02 // start
+const FrameETX = 0x03 // end
 
 func main() {
 	flag.Parse()
@@ -62,7 +61,7 @@ func main() {
 
 	// TODO make system func
 	read := func() byte {
-		buf := make([]byte, 1, 1)
+		buf := make([]byte, 1)
 		for {
 			n, err := s.Read(buf)
 			if err != nil && !errors.Is(err, io.EOF) {
@@ -92,19 +91,19 @@ func main() {
 			data = data[:0]
 		}
 		switch b := read(); b {
-		case FRAME_DLE:
+		case FrameDLE:
 			rawData = append(rawData, b)
 			switch b := read(); b {
-			case FRAME_ESC:
+			case FrameESC:
 				// escape sequence 0x10 0x00 => 0x10
 				rawData = append(rawData, b)
 				data = append(data, 0x10)
-			case FRAME_STX:
+			case FrameSTX:
 				rawData = append(rawData, b)
 				// start
 				collectData = true
 				continue
-			case FRAME_ETX:
+			case FrameETX:
 				rawData = append(rawData, b)
 				// end
 				collectData = false
@@ -125,7 +124,7 @@ func main() {
 				}
 				eventType := newEventType(data[:2])
 				eventData := data[2:]
-				if eventType != EVENT_READY || withReady {
+				if eventType != EventReady || withReady {
 					rawLog.Print(formatBytes(rawData))
 				}
 				sys.event(eventType, eventData)
@@ -147,36 +146,36 @@ type EventType uint16
 type KeyType uint32
 
 const (
-	EVENT_READY        EventType = 0x0101
-	EVENT_LEDS         EventType = 0x0102
-	EVENT_MSG          EventType = 0x0103
-	EVENT_LONG_DISPLAY EventType = 0x040a
-	EVENT_PUMP_REQUEST EventType = 0x0c01
-	EVENT_PUMP_STATUS  EventType = 0x000c
-	EVENT_LOCAL_KEY    EventType = 0x0002 // key press on main console
-	EVENT_REMOTE_KEY   EventType = 0x0003 // key press on wired remote
-	EVENT_WIRELESS_KEY EventType = 0x0083 // key press on wireless remote
+	EventReady       EventType = 0x0101
+	EventLEDs        EventType = 0x0102
+	EventMsg         EventType = 0x0103
+	EventLongDisplay EventType = 0x040a
+	EventPumpRequest EventType = 0x0c01
+	EventPumpStatus  EventType = 0x000c
+	// EventLocalKey    EventType = 0x0002 // key press on main console
+	EventRemoteKey EventType = 0x0003 // key press on wired remote
+	// EventWirelessKey EventType = 0x0083 // key press on wireless remote
 
-	KEY_NONE     KeyType = 0x00000
-	KEY_RIGHT    KeyType = 0x00001
-	KEY_MENU     KeyType = 0x00002
-	KEY_LEFT     KeyType = 0x00004
-	KEY_SERVICE  KeyType = 0x00008
-	KEY_MINUS    KeyType = 0x00010
-	KEY_PLUS     KeyType = 0x00020
-	KEY_POOL_SPA KeyType = 0x00040
-	KEY_FILTER   KeyType = 0x00080
-	KEY_LIGHTS   KeyType = 0x00100
-	KEY_AUX1     KeyType = 0x00200
-	KEY_AUX2     KeyType = 0x00400
-	KEY_AUX3     KeyType = 0x00800
-	KEY_AUX4     KeyType = 0x01000
-	KEY_AUX5     KeyType = 0x02000
-	KEY_AUX6     KeyType = 0x04000
-	KEY_AUX7     KeyType = 0x08000
-	KEY_VALVE3   KeyType = 0x10000
-	KEY_VALVE4   KeyType = 0x20000
-	KEY_HEATER   KeyType = 0x40000
+	KeyNone    KeyType = 0x00000
+	KeyRight   KeyType = 0x00001
+	KeyMenu    KeyType = 0x00002
+	KeyLeft    KeyType = 0x00004
+	KeyService KeyType = 0x00008
+	KeyMinus   KeyType = 0x00010
+	KeyPlus    KeyType = 0x00020
+	KeyPoolSpa KeyType = 0x00040
+	KeyFilter  KeyType = 0x00080
+	KeyLights  KeyType = 0x00100
+	KeyAux1    KeyType = 0x00200
+	KeyAux2    KeyType = 0x00400
+	KeyAux3    KeyType = 0x00800
+	KeyAux4    KeyType = 0x01000
+	KeyAux5    KeyType = 0x02000
+	KeyAux6    KeyType = 0x04000
+	KeyAux7    KeyType = 0x08000
+	KeyValve3  KeyType = 0x10000
+	KeyValve4  KeyType = 0x20000
+	KeyHeater  KeyType = 0x40000
 )
 
 func newEventType(b []byte) EventType {
@@ -201,45 +200,45 @@ func (kt KeyType) ToBytes() []byte {
 
 func (kt KeyType) String() string {
 	switch kt {
-	case KEY_NONE:
+	case KeyNone:
 		return "NONE"
-	case KEY_RIGHT:
+	case KeyRight:
 		return "RIGHT"
-	case KEY_MENU:
+	case KeyMenu:
 		return "MENU"
-	case KEY_LEFT:
+	case KeyLeft:
 		return "LEFT"
-	case KEY_SERVICE:
+	case KeyService:
 		return "SERVICE"
-	case KEY_MINUS:
+	case KeyMinus:
 		return "MINUS"
-	case KEY_PLUS:
+	case KeyPlus:
 		return "PLUS"
-	case KEY_POOL_SPA:
+	case KeyPoolSpa:
 		return "POOL_SPA"
-	case KEY_FILTER:
+	case KeyFilter:
 		return "FILTER"
-	case KEY_LIGHTS:
+	case KeyLights:
 		return "LIGHTS"
-	case KEY_AUX1:
+	case KeyAux1:
 		return "AUX1"
-	case KEY_AUX2:
+	case KeyAux2:
 		return "AUX2"
-	case KEY_AUX3:
+	case KeyAux3:
 		return "AUX3"
-	case KEY_AUX4:
+	case KeyAux4:
 		return "AUX4"
-	case KEY_AUX5:
+	case KeyAux5:
 		return "AUX5"
-	case KEY_AUX6:
+	case KeyAux6:
 		return "AUX6"
-	case KEY_AUX7:
+	case KeyAux7:
 		return "AUX7"
-	case KEY_VALVE3:
+	case KeyValve3:
 		return "VALVE3"
-	case KEY_VALVE4:
+	case KeyValve4:
 		return "VALVE4"
-	case KEY_HEATER:
+	case KeyHeater:
 		return "HEATER"
 	}
 	return "UNKNOWN"
@@ -266,17 +265,17 @@ func decodeLeds(data []byte) []string {
 	return leds
 }
 
-type system struct {
+type System struct {
 	s *serial.Port
 	// currentMenu string
-	state       map[string]bool
+	// state       map[string]bool
 	displayText []byte
 	queue       chan []byte
 	watchers    sync.Map
 }
 
-func NewSystem(s *serial.Port) *system {
-	return &system{
+func NewSystem(s *serial.Port) *System {
+	return &System{
 		s:     s,
 		queue: make(chan []byte, 100),
 	}
@@ -308,7 +307,7 @@ func formatBytes(b []byte) string {
 	return fmt.Sprintf("[% x] [% x] [% x] [% x] [% x]", b[:2], b[2:4], b[4:l-4], b[l-4:l-2], b[l-2:])
 }
 
-func (s *system) display(m []byte) {
+func (s *System) display(m []byte) {
 	s.displayText = m
 	s.watchers.Range(func(_, value interface{}) bool {
 		if f, ok := value.(func([]byte)); ok {
@@ -318,7 +317,7 @@ func (s *system) display(m []byte) {
 	})
 }
 
-func (s *system) keyUntil(key KeyType, expected string) (prompt []byte) {
+func (s *System) keyUntil(key KeyType, expected string) (prompt []byte) {
 	id := xid.New().String()
 	done := make(chan struct{})
 	once := sync.Once{}
@@ -346,8 +345,8 @@ loop:
 
 func escDLE(in []byte) []byte {
 	for i, b := range in {
-		if b == FRAME_DLE {
-			in = append(in[:i+1], append([]byte{FRAME_ESC}, in[i+1:]...)...)
+		if b == FrameDLE {
+			in = append(in[:i+1], append([]byte{FrameESC}, in[i+1:]...)...)
 		}
 	}
 	return in
@@ -363,13 +362,13 @@ func crc(b []byte) []byte {
 	return out
 }
 
-func (s *system) encodeKey(key KeyType) {
-	msg := []byte{FRAME_DLE, FRAME_STX}
-	msg = append(msg, EVENT_REMOTE_KEY.ToBytes()...)
+func (s *System) encodeKey(key KeyType) {
+	msg := []byte{FrameDLE, FrameSTX}
+	msg = append(msg, EventRemoteKey.ToBytes()...)
 	msg = append(msg, escDLE(key.ToBytes())...)
 	msg = append(msg, escDLE(key.ToBytes())...)
 	msg = append(msg, crc(msg)...)
-	msg = append(msg, FRAME_DLE, FRAME_ETX)
+	msg = append(msg, FrameDLE, FrameETX)
 	s.queue <- msg
 }
 
@@ -381,7 +380,7 @@ func messageLineWidth(data []byte) int {
 	return 16
 }
 
-func messagePlain(data []byte) (text string) {
+func messagePlain(data []byte) (text string) { //nolint:deadcode
 	width := messageLineWidth(data)
 	for i := 0; i < len(data)-1; i += width {
 		line := bytes.TrimSpace(data[i : i+width])
@@ -423,46 +422,46 @@ func messageFancy(data []byte) (text string) {
 	return text
 }
 
-func (s *system) event(typ EventType, data []byte) {
+func (s *System) event(typ EventType, data []byte) {
 	maybeLog := log.Printf
 	if unknown {
 		maybeLog = func(_ string, _ ...interface{}) {}
 	}
 	switch typ {
-	case EVENT_READY:
+	case EventReady:
 		select {
 		case m := <-s.queue:
 			maybeLog("OUTPUT: %s", formatBytes(m))
 			s.s.Write(m)
 		default:
 		}
-	case EVENT_LONG_DISPLAY:
-	case EVENT_MSG:
+	case EventLongDisplay:
+	case EventMsg:
 		s.display(data[0 : len(data)-1])
 		maybeLog("Message: %s", messageFancy(data))
-	case EVENT_LEDS:
+	case EventLEDs:
 		// 1st 4 bytes are for light indicators
 		// 2nd 4 bytes are for blink indicators
 		leds := decodeLeds(data[:4])
 		blinking := decodeLeds(data[4:])
 		maybeLog("LEDs: %v  Blinking: %v", leds, blinking)
-	case EVENT_PUMP_REQUEST:
+	case EventPumpRequest:
 		speed := binary.BigEndian.Uint16(data)
 		maybeLog("Pump speed request: %d%%", speed)
-	case EVENT_PUMP_STATUS:
+	case EventPumpStatus:
 		speed := data[2]
 		power := ((((int(data[3]) & 0xf0) >> 4) * 1000) +
 			((int(data[3]) & 0x0f) * 100) +
 			(((int(data[4]) & 0xf0) >> 4) * 10) +
 			(int(data[4]) & 0x0f))
 		maybeLog("Pump speed status: %d%% %dW", speed, power)
-	case EVENT_REMOTE_KEY:
+	case EventRemoteKey:
 		// Button Press events are frequently repeated we will get [KEY KEY] on
 		// the original press and [KEY NONE] on subsequent 100ms triggers where
 		// the key is still pressed
 		key := newKeyType(data[:4])
 		upper := newKeyType(data[4:])
-		if upper == KEY_NONE {
+		if upper == KeyNone {
 			// only report original keypress
 			return
 		}

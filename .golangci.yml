@@ -1,0 +1,31 @@
+linters:
+  enable-all: false
+  disable-all: true
+  enable:
+    - deadcode
+    - depguard
+    - gocritic
+    - gofmt
+    - goimports
+    - golint
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - scopelint
+    - structcheck
+    - typecheck
+    - unconvert
+    - unparam
+    - varcheck
+run:
+  tests: true
+  skip-files:
+    - ".*.pb.go"
+issues:
+  exclude-use-default: false
+  exclude:
+    - "should have comment"
+    - "comment on exported"
+  max-same-issues: 0
+  max-issues-per-linter: 0
