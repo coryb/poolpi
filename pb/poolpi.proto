@@ -1,0 +1,75 @@
+syntax = "proto3";
+option go_package = "github.com/coryb/poolpi/pb";
+
+service Controller {
+    rpc MonitorState(MonitorStateRequest) returns (stream MonitorStateResponse) {}
+    rpc Messages(MessagesRequest) returns (stream MessagesResponse) {}
+    rpc Event(EventRequest) returns (EventResponse) {}
+}
+
+message MonitorStateRequest {}
+message MonitorStateResponse {
+    Indicator Heater1 = 1;
+    Indicator Valve3 = 2;
+    Indicator CheckSystem = 3;
+    Indicator Pool = 4;
+    Indicator Spa = 5;
+    Indicator Filter = 6;
+    Indicator Lights = 7;
+    Indicator Aux1 = 8;
+    Indicator Aux2 = 9;
+    Indicator Service = 10;
+    Indicator Aux3 = 11;
+    Indicator Aux4 = 12;
+    Indicator Aux5 = 13;
+    Indicator Aux6 = 14;
+    Indicator Valve4 = 15;
+    Indicator Spillover = 16;
+    Indicator SystemOff = 17;
+    Indicator Aux7 = 18;
+    Indicator Aux8 = 19;
+    Indicator Aux9 = 20;
+    Indicator Aux10 = 21;
+    Indicator Aux11 = 22;
+    Indicator Aux12 = 23;
+    Indicator Aux13 = 24;
+    Indicator Auz14 = 25;
+    Indicator SuperChlorinate = 26;
+}
+
+message Indicator {
+    bool Active = 1;
+    bool Caution = 2; // Light Blinking
+}
+
+message MessagesRequest{}
+message MessagesResponse{
+    bytes Message = 1; 
+}
+
+message EventRequest {
+    enum Event {
+        KeyNone    = 0;
+        KeyRight   = 1;
+        KeyMenu    = 2;
+        KeyLeft    = 3;
+        KeyService = 4;
+        KeyMinus   = 5;
+        KeyPlus    = 6;
+        KeyPoolSpa = 7;
+        KeyFilter  = 8;
+        KeyLights  = 9;
+        KeyAux1    = 10;
+        KeyAux2    = 11;
+        KeyAux3    = 12;
+        KeyAux4    = 13;
+        KeyAux5    = 14;
+        KeyAux6    = 15;
+        KeyAux7    = 16;
+        KeyValve3  = 17;
+        KeyValve4  = 18;
+        KeyHeater  = 19;
+    }
+}
+message EventResponse{}
+

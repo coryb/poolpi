@@ -1,0 +1,78 @@
+################################################################################
+# Targets
+################################################################################
+
+fs protoc() {
+	protocOutput
+	download "."
+}
+
+fs lint() {
+	image "golangci/golangci-lint:v1.38.0"
+	run "golangci-lint run ./..." with option {
+		romount "/src" lintSrc
+		goCache "/root"
+	}
+}
+
+################################################################################
+# Build Logic
+################################################################################
+
+fs _runProtoc() {
+	image "golang:1.16-alpine"
+	run "apk add -U protoc"
+	run "go mod download" with option {
+		romount "/src" modSrc
+		goCache "/root"
+	}
+	run "go install google.golang.org/grpc/cmd/protoc-gen-go-grpc google.golang.org/protobuf/cmd/protoc-gen-go" with option {
+		romount "/src" modSrc
+		goCache "/root"
+	}
+	run "protoc --go_out=/output --go_opt=paths=source_relative --go-grpc_out=/output --go-grpc_opt=paths=source_relative ./pb/poolpi.proto" with option {
+		romount "/src" protoSrc
+		goCache "/root"
+		mount scratch "/output" as protocOutput
+	}
+}
+
+################################################################################
+# Common Sources
+################################################################################
+
+fs goSrc() {
+	local "." with option {
+		includePatterns "**/*.go"
+		excludePatterns "vendor"
+	}
+}
+
+fs lintSrc() {
+	goSrc
+	copy local(".golangci.yml") "/" "/"
+	copy modSrc "/" "/"
+}
+
+fs modSrc() {
+	local "." with includePatterns("go.mod", "go.sum")
+}
+
+fs  protoSrc() {
+	local "." with includePatterns("**/*.proto")
+}
+
+################################################################################
+# Common Options
+################################################################################
+
+option::run romount(string d, fs src) {
+	dir d
+	mount src d with readonly
+}
+
+option::run goCache(string homedir) {
+	env "GOBIN" "/usr/bin"
+    mount scratch format("%s/.cache/go-build", homedir) with cache(format("poolpi/go-build%s" homedir), "private")
+    mount scratch "/go/pkg/mod" with cache(format("poolpi/go-mod%s", homedir), "private")
+}

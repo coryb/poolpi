@@ -45,19 +45,37 @@ func main() {
 	sys := NewSystem(s)
 
 	// hack to simulate moving through menus for testing
-	// go func() {
-	// 	for {
-	// 		prompt := sys.keyUntil(KEY_MENU, "Menu")
-	// 		if messagePlain(prompt) == "Settings Menu" {
-	// 			break
-	// 		}
-	// 	}
-	// 	log.Printf("Got Settings Menu")
+	go func() {
+		s := time.Now()
+		for {
+			prompt := sys.keyUntil(KeyMenu, "Menu")
+			// log.Printf("Got Message: %s", messagePlain(prompt))
+			if messagePlain(prompt) == "Settings Menu" {
+				// log.Printf("Breaking")
+				break
+			}
+		}
 
-	// 	sys.keyUntil(KEY_RIGHT, "Spa")
-	// 	prompt := sys.keyUntil(KEY_RIGHT, "Pool")
-	// 	log.Printf("Pool Prompt: %s", messageFancy(prompt))
-	// }()
+		sys.keyUntil(KeyRight, "Spa")
+		prompt := sys.keyUntil(KeyRight, "Pool")
+		// for {
+		// 	prompt := sys.keyUntil(KeyPlus, "Pool")
+		// 	if strings.Contains(messagePlain(prompt), "82") {
+		// 		break
+		// 	}
+		// }
+		// log.Printf("Set Pool Temp to 82 in %s", time.Since(s))
+		if !strings.Contains(messagePlain(prompt), "Off") {
+			for {
+				prompt := sys.keyUntil(KeyMinus, "Pool")
+				if strings.Contains(messagePlain(prompt), "Off") {
+					break
+				}
+			}
+		}
+		log.Printf("Set Pool Temp off in %s", time.Since(s))
+		os.Exit(0)
+	}()
 
 	// TODO make system func
 	read := func() byte {
@@ -288,7 +306,8 @@ func formatBytes(b []byte) string {
 	// special handling for message, last bit in data is "flags" also they use
 	// the high bit to indicate "blink".  For logging if not graphic char
 	// (excluding space) just print the hex value.
-	if bytes.Equal(b[2:4], []byte{0x01, 0x03}) {
+	eventType := newEventType(b[2:4])
+	if eventType == EventMsg {
 		data := []string{}
 		for _, c := range b[4 : l-5] {
 			highbit := c & 0x80
@@ -333,7 +352,7 @@ func (s *System) keyUntil(key KeyType, expected string) (prompt []byte) {
 loop:
 	for {
 		s.encodeKey(key)
-		timeout := time.After(500 * time.Millisecond)
+		timeout := time.After(1000 * time.Millisecond)
 		select {
 		case <-done:
 			break loop
@@ -388,7 +407,7 @@ func messagePlain(data []byte) (text string) { //nolint:deadcode
 			continue
 		}
 		if i > 0 {
-			text += ": "
+			text += " "
 		}
 		for _, r := range line {
 			text += string(r & 0x7f)
@@ -431,30 +450,36 @@ func (s *System) event(typ EventType, data []byte) {
 	case EventReady:
 		select {
 		case m := <-s.queue:
-			maybeLog("OUTPUT: %s", formatBytes(m))
+			eventKey := newEventType(m[2:4])
+			if eventKey == EventRemoteKey {
+				maybeLog("|--> Button: %s", newKeyType(m[4:8]))
+			} else {
+				maybeLog("|--> %s", formatBytes(m))
+			}
 			s.s.Write(m)
 		default:
 		}
 	case EventLongDisplay:
+		// maybeLog("|<-- Long: %s", formatBytes(data))
 	case EventMsg:
-		s.display(data[0 : len(data)-1])
-		maybeLog("Message: %s", messageFancy(data))
+		s.display(data)
+		maybeLog("|<-- Message: %s", messageFancy(data))
 	case EventLEDs:
 		// 1st 4 bytes are for light indicators
 		// 2nd 4 bytes are for blink indicators
 		leds := decodeLeds(data[:4])
 		blinking := decodeLeds(data[4:])
-		maybeLog("LEDs: %v  Blinking: %v", leds, blinking)
+		maybeLog("|<-- LEDs: %v  Blinking: %v", leds, blinking)
 	case EventPumpRequest:
 		speed := binary.BigEndian.Uint16(data)
-		maybeLog("Pump speed request: %d%%", speed)
+		maybeLog("|<-- Pump speed request: %d%%", speed)
 	case EventPumpStatus:
 		speed := data[2]
 		power := ((((int(data[3]) & 0xf0) >> 4) * 1000) +
 			((int(data[3]) & 0x0f) * 100) +
 			(((int(data[4]) & 0xf0) >> 4) * 10) +
 			(int(data[4]) & 0x0f))
-		maybeLog("Pump speed status: %d%% %dW", speed, power)
+		maybeLog("|<-- Pump speed status: %d%% %dW", speed, power)
 	case EventRemoteKey:
 		// Button Press events are frequently repeated we will get [KEY KEY] on
 		// the original press and [KEY NONE] on subsequent 100ms triggers where
@@ -465,9 +490,9 @@ func (s *System) event(typ EventType, data []byte) {
 			// only report original keypress
 			return
 		}
-		maybeLog("Button: %s", key)
+		maybeLog("|<- Button: %s", key)
 	default:
-		log.Printf("Event: [% x] [% x]", typ.ToBytes(), data)
+		log.Printf("|<-- [% x] [% x]", typ.ToBytes(), data)
 	}
 
 	// Jandy Valve?? Spa/Pool
