@@ -1,10 +1,9 @@
-package main
+package poolpi
 
 import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -19,80 +18,27 @@ import (
 	"github.com/tarm/serial"
 )
 
-var unknown bool
-var withReady bool
-
-func init() {
-	flag.BoolVar(&unknown, "unknown", false, "only display unknown event")
-	flag.BoolVar(&withReady, "ready", false, "include READY messages in binary log")
-}
-
 const FrameDLE = 0x10 // "data link escape"
 const FrameESC = 0x00 // escape
 const FrameSTX = 0x02 // start
 const FrameETX = 0x03 // end
 
-func main() {
-	flag.Parse()
-	log.SetOutput(os.Stdout)
-	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
-	c := &serial.Config{Name: "/dev/ttyS0", Baud: 19200, StopBits: serial.Stop2}
-	s, err := serial.OpenPort(c)
-	if err != nil {
-		log.Fatal(err)
+func (s *System) read() byte {
+	buf := make([]byte, 1)
+	for {
+		n, err := s.s.Read(buf)
+		if err != nil && !errors.Is(err, io.EOF) {
+			log.Fatalf("Got Error: %s", err)
+		}
+		if n <= 0 {
+			log.Printf("No Bytes")
+			continue
+		}
+		return buf[0]
 	}
+}
 
-	sys := NewSystem(s)
-
-	// hack to simulate moving through menus for testing
-	go func() {
-		s := time.Now()
-		for {
-			prompt := sys.keyUntil(KeyMenu, "Menu")
-			// log.Printf("Got Message: %s", messagePlain(prompt))
-			if messagePlain(prompt) == "Settings Menu" {
-				// log.Printf("Breaking")
-				break
-			}
-		}
-
-		sys.keyUntil(KeyRight, "Spa")
-		prompt := sys.keyUntil(KeyRight, "Pool")
-		// for {
-		// 	prompt := sys.keyUntil(KeyPlus, "Pool")
-		// 	if strings.Contains(messagePlain(prompt), "82") {
-		// 		break
-		// 	}
-		// }
-		// log.Printf("Set Pool Temp to 82 in %s", time.Since(s))
-		if !strings.Contains(messagePlain(prompt), "Off") {
-			for {
-				prompt := sys.keyUntil(KeyMinus, "Pool")
-				if strings.Contains(messagePlain(prompt), "Off") {
-					break
-				}
-			}
-		}
-		log.Printf("Set Pool Temp off in %s", time.Since(s))
-		os.Exit(0)
-	}()
-
-	// TODO make system func
-	read := func() byte {
-		buf := make([]byte, 1)
-		for {
-			n, err := s.Read(buf)
-			if err != nil && !errors.Is(err, io.EOF) {
-				log.Fatalf("Got Error: %s", err)
-			}
-			if n <= 0 {
-				log.Printf("No Bytes")
-				continue
-			}
-			return buf[0]
-		}
-	}
-
+func (s *System) Loop() {
 	f, err := os.Create("binary.log")
 	if err != nil {
 		log.Fatalf("Failed to open binary.log: %s", err)
@@ -108,10 +54,10 @@ func main() {
 		if !collectData {
 			data = data[:0]
 		}
-		switch b := read(); b {
+		switch b := s.read(); b {
 		case FrameDLE:
 			rawData = append(rawData, b)
-			switch b := read(); b {
+			switch b := s.read(); b {
 			case FrameESC:
 				// escape sequence 0x10 0x00 => 0x10
 				rawData = append(rawData, b)
@@ -142,10 +88,10 @@ func main() {
 				}
 				eventType := newEventType(data[:2])
 				eventData := data[2:]
-				if eventType != EventReady || withReady {
+				if eventType != EventReady || s.WithReady {
 					rawLog.Print(formatBytes(rawData))
 				}
-				sys.event(eventType, eventData)
+				s.event(eventType, eventData)
 				rawData = rawData[:0]
 			default:
 				log.Printf("Unknown Sequence: 0x10%x", b)
@@ -290,6 +236,10 @@ type System struct {
 	displayText []byte
 	queue       chan []byte
 	watchers    sync.Map
+
+	// FIXME move logging control out
+	Unknown   bool
+	WithReady bool
 }
 
 func NewSystem(s *serial.Port) *System {
@@ -443,7 +393,7 @@ func messageFancy(data []byte) (text string) {
 
 func (s *System) event(typ EventType, data []byte) {
 	maybeLog := log.Printf
-	if unknown {
+	if s.Unknown {
 		maybeLog = func(_ string, _ ...interface{}) {}
 	}
 	switch typ {

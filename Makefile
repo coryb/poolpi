@@ -4,14 +4,18 @@ export BUILDKIT_HOST ?= docker-container://buildkitd
 push: console
 	rsync -varH ./console $(REMOTE_HOST):~/poolpi/. 
 
-console: console.go
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -a -ldflags '-s -w -extldflags "-static"' -o console *.go
+console:
+	hlb run -t console --log-output plain
 
 lint:
 	hlb run -t lint --log-output plain
 
 protoc:
-	 hlb run -t protoc --log-output plain
+	hlb run -t protoc --log-output plain
+
+################################################################################
+# Setup targets
+################################################################################	 
 
 buildkitd:
 	docker run -d --privileged --name buildkitd moby/buildkit:latest
@@ -19,4 +23,4 @@ buildkitd:
 hlb:
 	go install github.com/openllb/hlb
 
-.PHONY: push hlb buildkitd protoc lint
+.PHONY: push hlb buildkitd protoc lint console

@@ -15,6 +15,11 @@ fs lint() {
 	}
 }
 
+fs console() {
+	buildOutput "console" "./cmd/console"
+	download "."
+}
+
 ################################################################################
 # Build Logic
 ################################################################################
@@ -37,6 +42,21 @@ fs _runProtoc() {
 	}
 }
 
+fs _goBuild(string name, string pkg) {
+	image "golang:1.16-alpine"
+	run <<-EOM
+		go build -a -ldflags '-s -w -extldflags "-static"' -o /output/${name} ${pkg}
+	EOM	with option {
+		env "CGO_ENABLED" "0"
+		env "GOOS" "linux"
+		env "GOARCH" "arm"
+		env "GOARM" "7"
+		romount "/src" goSrc
+		goCache "/root"
+		mount scratch "/output" as buildOutput
+	}
+}
+
 ################################################################################
 # Common Sources
 ################################################################################
@@ -46,12 +66,12 @@ fs goSrc() {
 		includePatterns "**/*.go"
 		excludePatterns "vendor"
 	}
+	copy modSrc "/" "/"
 }
 
 fs lintSrc() {
 	goSrc
 	copy local(".golangci.yml") "/" "/"
-	copy modSrc "/" "/"
 }
 
 fs modSrc() {
