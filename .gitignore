@@ -1,5 +1,5 @@
 .poolpi-host
 go.sum
-vendor/
-console
-.vscode/
+/vendor
+/bin
+/.vscode
