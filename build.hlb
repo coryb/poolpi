@@ -17,7 +17,27 @@ fs lint() {
 
 fs console() {
 	buildOutput "console" "./cmd/console"
-	download "."
+	download "./bin"
+}
+
+fs poold() {
+	buildOutput "poold" "./cmd/poold"
+	download "./bin"
+}
+
+fs watch() {
+	buildOutput "watch" "./cmd/watch"
+	download "./bin"
+}
+
+fs state() {
+	buildOutput "state" "./cmd/state"
+	download "./bin"
+}
+
+fs button() {
+	buildOutput "button" "./cmd/button"
+	download "./bin"
 }
 
 fs test() {
@@ -74,6 +94,19 @@ fs goSrc() {
 	copy modSrc "/" "/"
 }
 
+fs libSrc() {
+	local "." with option {
+		includePatterns "**/*.go"
+		excludePatterns "vendor" "cmd"
+	}
+	copy modSrc "/" "/"
+}
+
+fs cmdSrc(string cmd) {
+	libSrc
+	copy local(cmd) "/" "/"
+}
+
 fs lintSrc() {
 	goSrc
 	copy local(".golangci.yml") "/" "/"
@@ -100,8 +133,8 @@ option::run goCache(string homedir) {
 	env "GOBIN" "/usr/bin"
 
 	env "GOCACHE" "${homedir}/.cache/go-build"
-    mount scratch "${homedir}/.cache/go-build" with cache("poolpi/go-build${homedir}", "private")
+    mount scratch "${homedir}/.cache/go-build" with cache("poolpi/go-build${homedir}", "shared")
 	
 	env "GOMODCACHE" "/go/pkg/mod"
-    mount scratch "/go/pkg/mod" with cache("poolpi/go-mod${homedir}", "private")
+    mount scratch "/go/pkg/mod" with cache("poolpi/go-mod${homedir}", "shared")
 }

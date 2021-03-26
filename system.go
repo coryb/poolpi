@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/tarm/serial"
 	"golang.org/x/sync/errgroup"
@@ -138,7 +139,17 @@ func (s *System) handleEvent(e Event) {
 	if e.Type == EventReady {
 		select {
 		case m := <-s.outgoing:
-			s.serialPort.Write(m)
+			// this sleep is a fuzz, if we respond "too quickly" it seems
+			// the automation system is not ready to read key presses
+			time.Sleep(2 * time.Millisecond)
+			n, err := s.serialPort.Write(m)
+			if err != nil {
+				log.Printf("ERROR: %s", err)
+				return
+			}
+			if n != len(m) {
+				log.Printf("WARNING: Wrote %d/%d", n, len(m))
+			}
 		default:
 		}
 		return

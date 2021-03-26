@@ -1,11 +1,11 @@
 REMOTE_HOST = $(shell cat .poolpi-host)
 export BUILDKIT_HOST ?= docker-container://buildkitd
 
-push: console
-	rsync -varH ./console $(REMOTE_HOST):~/poolpi/. 
+push: binaries
+	rsync -varH ./bin/ $(REMOTE_HOST):~/poolpi/. 
 
-console:
-	hlb run -t console --log-output plain
+binaries:
+	hlb run -t console -t poold -t watch -t state -t button --log-output plain
 
 lint:
 	hlb run -t lint --log-output plain
@@ -26,4 +26,4 @@ buildkitd:
 hlb:
 	go install github.com/openllb/hlb
 
-.PHONY: push hlb buildkitd protoc lint test console
+.PHONY: push hlb buildkitd protoc lint test binaries

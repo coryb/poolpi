@@ -8,7 +8,6 @@ import (
 	"unicode"
 
 	"github.com/coryb/poolpi/pb"
-	"github.com/logrusorgru/aurora/v3"
 )
 
 type EventType uint16
@@ -88,104 +87,8 @@ func (e Event) Format() string {
 }
 
 func (e Event) Summary() string {
-	pbEvent := e.ToPB()
-	switch ev := pbEvent.Event.(type) {
-	case *pb.Event_State:
-		active := []string{}
-		blink := func(s string, should bool) string {
-			if !should {
-				return s
-			}
-			return aurora.SlowBlink(s).String()
-		}
-		if ind := ev.State.GetHeater1(); ind.GetActive() {
-			active = append(active, blink("Heater1", ind.GetCaution()))
-		}
-		if ind := ev.State.GetValve3(); ind.GetActive() {
-			active = append(active, blink("Valve3", ind.GetCaution()))
-		}
-		if ind := ev.State.GetCheckSystem(); ind.GetActive() {
-			active = append(active, blink("CheckSystem", ind.GetCaution()))
-		}
-		if ind := ev.State.GetPool(); ind.GetActive() {
-			active = append(active, blink("Pool", ind.GetCaution()))
-		}
-		if ind := ev.State.GetSpa(); ind.GetActive() {
-			active = append(active, blink("Spa", ind.GetCaution()))
-		}
-		if ind := ev.State.GetFilter(); ind.GetActive() {
-			active = append(active, blink("Filter", ind.GetCaution()))
-		}
-		if ind := ev.State.GetLights(); ind.GetActive() {
-			active = append(active, blink("Lights", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux1(); ind.GetActive() {
-			active = append(active, blink("Aux1", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux2(); ind.GetActive() {
-			active = append(active, blink("Aux2", ind.GetCaution()))
-		}
-		if ind := ev.State.GetService(); ind.GetActive() {
-			active = append(active, blink("Service", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux3(); ind.GetActive() {
-			active = append(active, blink("Aux3", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux4(); ind.GetActive() {
-			active = append(active, blink("Aux4", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux5(); ind.GetActive() {
-			active = append(active, blink("Aux5", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux6(); ind.GetActive() {
-			active = append(active, blink("Aux6", ind.GetCaution()))
-		}
-		if ind := ev.State.GetValve4(); ind.GetActive() {
-			active = append(active, blink("Valve4", ind.GetCaution()))
-		}
-		if ind := ev.State.GetSpillover(); ind.GetActive() {
-			active = append(active, blink("Spillover", ind.GetCaution()))
-		}
-		if ind := ev.State.GetSystemOff(); ind.GetActive() {
-			active = append(active, blink("SystemOff", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux7(); ind.GetActive() {
-			active = append(active, blink("Aux7", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux8(); ind.GetActive() {
-			active = append(active, blink("Aux8", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux9(); ind.GetActive() {
-			active = append(active, blink("Aux9", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux10(); ind.GetActive() {
-			active = append(active, blink("Aux10", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux11(); ind.GetActive() {
-			active = append(active, blink("Aux11", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux12(); ind.GetActive() {
-			active = append(active, blink("Aux12", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux13(); ind.GetActive() {
-			active = append(active, blink("Aux13", ind.GetCaution()))
-		}
-		if ind := ev.State.GetAux14(); ind.GetActive() {
-			active = append(active, blink("Aux14", ind.GetCaution()))
-		}
-		if ind := ev.State.GetSuperChlorinate(); ind.GetActive() {
-			active = append(active, blink("SuperChlorinate", ind.GetCaution()))
-		}
-		return fmt.Sprintf("State: %v", active)
-	case *pb.Event_Message:
-		return fmt.Sprintf("Message: %s", ev.Message.Fancy())
-	case *pb.Event_PumpRequest:
-		return fmt.Sprintf("Pump speed request: %d%%", ev.PumpRequest.SpeedPercent)
-	case *pb.Event_PumpStatus:
-		return fmt.Sprintf("Pump speed status: %d%% %dW",
-			ev.PumpStatus.SpeedPercent,
-			ev.PumpStatus.PowerWatts,
-		)
+	if s := e.ToPB().Summary(); s != "" {
+		return s
 	}
 	return e.Format()
 }

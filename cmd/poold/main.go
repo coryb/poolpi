@@ -37,7 +37,10 @@ func main() {
 	}
 
 	unsubscribe := sys.Subscribe(func(e poolpi.Event) {
-		log.Printf(e.Format())
+		if e.Type == poolpi.EventLongDisplay {
+			return
+		}
+		log.Printf("|<--- %s", e.Summary())
 	})
 
 	defer unsubscribe()
@@ -69,7 +72,9 @@ func (s *poolServer) Events(stream pb.Pool_EventsServer) error {
 			if err != nil {
 				return err
 			}
-			s.pool.Send(poolpi.KeyTypeFromPB(pbKey.Key).ToEvent())
+			key := poolpi.KeyTypeFromPB(pbKey.Key)
+			s.pool.Send(key.ToEvent())
+			log.Printf("|---> Key %s", key.String())
 		}
 	})
 
