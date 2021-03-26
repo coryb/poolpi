@@ -1,14 +1,54 @@
 syntax = "proto3";
 option go_package = "github.com/coryb/poolpi/pb";
 
-service Controller {
-    rpc MonitorState(MonitorStateRequest) returns (stream MonitorStateResponse) {}
-    rpc Messages(MessagesRequest) returns (stream MessagesResponse) {}
-    rpc Event(EventRequest) returns (EventResponse) {}
+service Pool {
+    // rpc MonitorState(MonitorStateRequest) returns (stream MonitorStateResponse) {}
+    // rpc Messages(MessagesRequest) returns (stream MessagesResponse) {}
+    rpc Events(stream KeyEvent) returns (stream Event) {}
+    // rpc Event(EventRequest) returns (EventResponse) {}
 }
 
-message MonitorStateRequest {}
-message MonitorStateResponse {
+enum Key {
+    None    = 0;
+    Right   = 1;
+    Menu    = 2;
+    Left    = 3;
+    Service = 4;
+    Minus   = 5;
+    Plus    = 6;
+    PoolSpa = 7;
+    Filter  = 8;
+    Lights  = 9;
+    Aux1    = 10;
+    Aux2    = 11;
+    Aux3    = 12;
+    Aux4    = 13;
+    Aux5    = 14;
+    Aux6    = 15;
+    Aux7    = 16;
+    Valve3  = 17;
+    Valve4  = 18;
+    Heater  = 19;
+};
+
+message KeyEvent {
+    Key Key = 1;
+}
+
+message Event {
+    oneof Event {
+        UnknownEvent Unknown = 1;
+        StateEvent State =  2;
+        MessageEvent Message = 3;
+        PumpRequestEvent PumpRequest = 4;
+        PumpStatusEvent PumpStatus = 5;
+        // LocalKeyEvent?
+        // RemoteKeyEvent?
+        // WirelessKeyEvent?
+    }
+}
+
+message StateEvent {
     Indicator Heater1 = 1;
     Indicator Valve3 = 2;
     Indicator CheckSystem = 3;
@@ -33,7 +73,7 @@ message MonitorStateResponse {
     Indicator Aux11 = 22;
     Indicator Aux12 = 23;
     Indicator Aux13 = 24;
-    Indicator Auz14 = 25;
+    Indicator Aux14 = 25;
     Indicator SuperChlorinate = 26;
 }
 
@@ -42,34 +82,21 @@ message Indicator {
     bool Caution = 2; // Light Blinking
 }
 
-message MessagesRequest{}
-message MessagesResponse{
-    bytes Message = 1; 
+message MessageEvent {
+    bytes Message = 1;
+    uint32 Flags = 2; // only lower 8 bits used
 }
 
-message EventRequest {
-    enum Event {
-        KeyNone    = 0;
-        KeyRight   = 1;
-        KeyMenu    = 2;
-        KeyLeft    = 3;
-        KeyService = 4;
-        KeyMinus   = 5;
-        KeyPlus    = 6;
-        KeyPoolSpa = 7;
-        KeyFilter  = 8;
-        KeyLights  = 9;
-        KeyAux1    = 10;
-        KeyAux2    = 11;
-        KeyAux3    = 12;
-        KeyAux4    = 13;
-        KeyAux5    = 14;
-        KeyAux6    = 15;
-        KeyAux7    = 16;
-        KeyValve3  = 17;
-        KeyValve4  = 18;
-        KeyHeater  = 19;
-    }
+message PumpRequestEvent {
+    uint32 SpeedPercent = 1;
 }
-message EventResponse{}
 
+message PumpStatusEvent {
+    uint32 SpeedPercent = 1;
+    uint32 PowerWatts = 2;
+}
+
+message UnknownEvent {
+    bytes Type = 1;
+    bytes Data = 2;
+}

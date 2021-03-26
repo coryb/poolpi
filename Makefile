@@ -10,6 +10,9 @@ console:
 lint:
 	hlb run -t lint --log-output plain
 
+test:
+	hlb run -t test --log-output plain
+
 protoc:
 	hlb run -t protoc --log-output plain
 
@@ -23,4 +26,4 @@ buildkitd:
 hlb:
 	go install github.com/openllb/hlb
 
-.PHONY: push hlb buildkitd protoc lint console
+.PHONY: push hlb buildkitd protoc lint test console

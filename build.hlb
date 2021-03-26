@@ -20,6 +20,15 @@ fs console() {
 	download "."
 }
 
+fs test() {
+	image "golang:1.16-alpine"
+		run "go test -v ./..." with option {
+		env "CGO_ENABLED" "0"
+		romount "/src" goSrc
+		goCache "/root"
+	}
+}
+
 ################################################################################
 # Build Logic
 ################################################################################

@@ -14,214 +14,123 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// ControllerClient is the client API for Controller service.
+// PoolClient is the client API for Pool service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ControllerClient interface {
-	MonitorState(ctx context.Context, in *MonitorStateRequest, opts ...grpc.CallOption) (Controller_MonitorStateClient, error)
-	Messages(ctx context.Context, in *MessagesRequest, opts ...grpc.CallOption) (Controller_MessagesClient, error)
-	Event(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error)
+type PoolClient interface {
+	// rpc MonitorState(MonitorStateRequest) returns (stream MonitorStateResponse) {}
+	// rpc Messages(MessagesRequest) returns (stream MessagesResponse) {}
+	Events(ctx context.Context, opts ...grpc.CallOption) (Pool_EventsClient, error)
 }
 
-type controllerClient struct {
+type poolClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewControllerClient(cc grpc.ClientConnInterface) ControllerClient {
-	return &controllerClient{cc}
+func NewPoolClient(cc grpc.ClientConnInterface) PoolClient {
+	return &poolClient{cc}
 }
 
-func (c *controllerClient) MonitorState(ctx context.Context, in *MonitorStateRequest, opts ...grpc.CallOption) (Controller_MonitorStateClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Controller_ServiceDesc.Streams[0], "/Controller/MonitorState", opts...)
+func (c *poolClient) Events(ctx context.Context, opts ...grpc.CallOption) (Pool_EventsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Pool_ServiceDesc.Streams[0], "/Pool/Events", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &controllerMonitorStateClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
+	x := &poolEventsClient{stream}
 	return x, nil
 }
 
-type Controller_MonitorStateClient interface {
-	Recv() (*MonitorStateResponse, error)
+type Pool_EventsClient interface {
+	Send(*KeyEvent) error
+	Recv() (*Event, error)
 	grpc.ClientStream
 }
 
-type controllerMonitorStateClient struct {
+type poolEventsClient struct {
 	grpc.ClientStream
 }
 
-func (x *controllerMonitorStateClient) Recv() (*MonitorStateResponse, error) {
-	m := new(MonitorStateResponse)
+func (x *poolEventsClient) Send(m *KeyEvent) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *poolEventsClient) Recv() (*Event, error) {
+	m := new(Event)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *controllerClient) Messages(ctx context.Context, in *MessagesRequest, opts ...grpc.CallOption) (Controller_MessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Controller_ServiceDesc.Streams[1], "/Controller/Messages", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &controllerMessagesClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Controller_MessagesClient interface {
-	Recv() (*MessagesResponse, error)
-	grpc.ClientStream
-}
-
-type controllerMessagesClient struct {
-	grpc.ClientStream
-}
-
-func (x *controllerMessagesClient) Recv() (*MessagesResponse, error) {
-	m := new(MessagesResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *controllerClient) Event(ctx context.Context, in *EventRequest, opts ...grpc.CallOption) (*EventResponse, error) {
-	out := new(EventResponse)
-	err := c.cc.Invoke(ctx, "/Controller/Event", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// ControllerServer is the server API for Controller service.
-// All implementations must embed UnimplementedControllerServer
+// PoolServer is the server API for Pool service.
+// All implementations must embed UnimplementedPoolServer
 // for forward compatibility
-type ControllerServer interface {
-	MonitorState(*MonitorStateRequest, Controller_MonitorStateServer) error
-	Messages(*MessagesRequest, Controller_MessagesServer) error
-	Event(context.Context, *EventRequest) (*EventResponse, error)
-	mustEmbedUnimplementedControllerServer()
+type PoolServer interface {
+	// rpc MonitorState(MonitorStateRequest) returns (stream MonitorStateResponse) {}
+	// rpc Messages(MessagesRequest) returns (stream MessagesResponse) {}
+	Events(Pool_EventsServer) error
+	mustEmbedUnimplementedPoolServer()
 }
 
-// UnimplementedControllerServer must be embedded to have forward compatible implementations.
-type UnimplementedControllerServer struct {
+// UnimplementedPoolServer must be embedded to have forward compatible implementations.
+type UnimplementedPoolServer struct {
 }
 
-func (UnimplementedControllerServer) MonitorState(*MonitorStateRequest, Controller_MonitorStateServer) error {
-	return status.Errorf(codes.Unimplemented, "method MonitorState not implemented")
+func (UnimplementedPoolServer) Events(Pool_EventsServer) error {
+	return status.Errorf(codes.Unimplemented, "method Events not implemented")
 }
-func (UnimplementedControllerServer) Messages(*MessagesRequest, Controller_MessagesServer) error {
-	return status.Errorf(codes.Unimplemented, "method Messages not implemented")
-}
-func (UnimplementedControllerServer) Event(context.Context, *EventRequest) (*EventResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Event not implemented")
-}
-func (UnimplementedControllerServer) mustEmbedUnimplementedControllerServer() {}
+func (UnimplementedPoolServer) mustEmbedUnimplementedPoolServer() {}
 
-// UnsafeControllerServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ControllerServer will
+// UnsafePoolServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to PoolServer will
 // result in compilation errors.
-type UnsafeControllerServer interface {
-	mustEmbedUnimplementedControllerServer()
+type UnsafePoolServer interface {
+	mustEmbedUnimplementedPoolServer()
 }
 
-func RegisterControllerServer(s grpc.ServiceRegistrar, srv ControllerServer) {
-	s.RegisterService(&Controller_ServiceDesc, srv)
+func RegisterPoolServer(s grpc.ServiceRegistrar, srv PoolServer) {
+	s.RegisterService(&Pool_ServiceDesc, srv)
 }
 
-func _Controller_MonitorState_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(MonitorStateRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ControllerServer).MonitorState(m, &controllerMonitorStateServer{stream})
+func _Pool_Events_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(PoolServer).Events(&poolEventsServer{stream})
 }
 
-type Controller_MonitorStateServer interface {
-	Send(*MonitorStateResponse) error
+type Pool_EventsServer interface {
+	Send(*Event) error
+	Recv() (*KeyEvent, error)
 	grpc.ServerStream
 }
 
-type controllerMonitorStateServer struct {
+type poolEventsServer struct {
 	grpc.ServerStream
 }
 
-func (x *controllerMonitorStateServer) Send(m *MonitorStateResponse) error {
+func (x *poolEventsServer) Send(m *Event) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Controller_Messages_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(MessagesRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(ControllerServer).Messages(m, &controllerMessagesServer{stream})
-}
-
-type Controller_MessagesServer interface {
-	Send(*MessagesResponse) error
-	grpc.ServerStream
-}
-
-type controllerMessagesServer struct {
-	grpc.ServerStream
-}
-
-func (x *controllerMessagesServer) Send(m *MessagesResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _Controller_Event_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EventRequest)
-	if err := dec(in); err != nil {
+func (x *poolEventsServer) Recv() (*KeyEvent, error) {
+	m := new(KeyEvent)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(ControllerServer).Event(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Controller/Event",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControllerServer).Event(ctx, req.(*EventRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
-// Controller_ServiceDesc is the grpc.ServiceDesc for Controller service.
+// Pool_ServiceDesc is the grpc.ServiceDesc for Pool service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Controller_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Controller",
-	HandlerType: (*ControllerServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Event",
-			Handler:    _Controller_Event_Handler,
-		},
-	},
+var Pool_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "Pool",
+	HandlerType: (*PoolServer)(nil),
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "MonitorState",
-			Handler:       _Controller_MonitorState_Handler,
+			StreamName:    "Events",
+			Handler:       _Pool_Events_Handler,
 			ServerStreams: true,
-		},
-		{
-			StreamName:    "Messages",
-			Handler:       _Controller_Messages_Handler,
-			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "pb/poolpi.proto",

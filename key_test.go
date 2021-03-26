@@ -7,8 +7,6 @@ import (
 )
 
 func TestEncodeKey(t *testing.T) {
-	s := NewSystem(nil)
-
 	for key, expected := range map[KeyType]string{
 		KeyMinus:   "[10 02] [00 03] [10 00 00 00 00 10 00 00 00 00] [00 35] [10 03]",
 		KeyPlus:    "[10 02] [00 03] [20 00 00 00 20 00 00 00] [00 55] [10 03]",
@@ -31,8 +29,7 @@ func TestEncodeKey(t *testing.T) {
 	} {
 		key, expected := key, expected // make lexical
 		t.Run(key.String(), func(t *testing.T) {
-			s.encodeKey(key)
-			got := formatBytes(<-s.queue)
+			got := key.ToEvent().Format()
 			require.Equal(t, expected, got)
 		})
 	}
