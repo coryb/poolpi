@@ -42,7 +42,7 @@ fs button() {
 
 fs test() {
 	image "golang:1.16-alpine"
-		run "go test -v ./..." with option {
+	run "go test -v ./..." with option {
 		env "CGO_ENABLED" "0"
 		romount "/src" goSrc
 		goCache "/root"
@@ -71,7 +71,7 @@ fs _goBuild(string name, string pkg) {
 	image "golang:1.16-alpine"
 	run <<-EOM
 		go build -a -ldflags '-s -w -extldflags "-static"' -o /output/${name} ${pkg}
-	EOM	with option {
+	EOM with option {
 		env "CGO_ENABLED" "0"
 		env "GOOS" "linux"
 		env "GOARCH" "arm"
@@ -116,7 +116,7 @@ fs modSrc() {
 	local "." with includePatterns("go.mod", "go.sum")
 }
 
-fs  protoSrc() {
+fs protoSrc() {
 	local "." with includePatterns("**/*.proto")
 }
 
@@ -133,8 +133,8 @@ option::run goCache(string homedir) {
 	env "GOBIN" "/usr/bin"
 
 	env "GOCACHE" "${homedir}/.cache/go-build"
-    mount scratch "${homedir}/.cache/go-build" with cache("poolpi/go-build${homedir}", "shared")
-	
+	mount scratch "${homedir}/.cache/go-build" with cache("poolpi/go-build${homedir}", "shared")
+
 	env "GOMODCACHE" "/go/pkg/mod"
-    mount scratch "/go/pkg/mod" with cache("poolpi/go-mod${homedir}", "shared")
+	mount scratch "/go/pkg/mod" with cache("poolpi/go-mod${homedir}", "shared")
 }

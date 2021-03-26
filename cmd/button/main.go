@@ -47,7 +47,7 @@ func main() {
 			return
 		}
 		if state := ev.GetState(); state != nil {
-			log.Printf("Active: %s", state.Summary())
+			log.Print(state.Summary())
 			stream.CloseSend()
 			return
 		}

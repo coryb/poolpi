@@ -114,7 +114,7 @@ func (ev *StateEvent) Summary() string {
 	if ind := ev.GetSuperChlorinate(); ind.GetActive() {
 		active = append(active, blink("SuperChlorinate", ind.GetCaution()))
 	}
-	return fmt.Sprintf("%v", active)
+	return fmt.Sprintf("Active: %v", active)
 }
 
 func (ev *MessageEvent) Summary() string {
