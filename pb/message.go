@@ -18,7 +18,7 @@ func (m *MessageEvent) joinSeparator() string {
 	// so we want `Name: Value` but menu names are the edge case where we want
 	// `Settings Menu`
 	if bytes.Contains(m.Message, []byte("Menu")) {
-		return "v"
+		return " "
 	}
 	return ": "
 }

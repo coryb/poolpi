@@ -15,29 +15,32 @@ fs lint() {
 	}
 }
 
-fs console() {
-	buildOutput "console" "./cmd/console"
-	download "./bin"
-}
-
-fs poold() {
-	buildOutput "poold" "./cmd/poold"
-	download "./bin"
-}
-
-fs watch() {
-	buildOutput "watch" "./cmd/watch"
-	download "./bin"
-}
-
-fs state() {
-	buildOutput "state" "./cmd/state"
-	download "./bin"
-}
-
-fs button() {
-	buildOutput "button" "./cmd/button"
-	download "./bin"
+pipeline cmds() {
+	stage fs {
+		buildOutput "console" "./cmd/console"
+		download "./bin"
+	} fs {
+		buildOutput "poold" "./cmd/poold"
+		download "./bin"
+	} fs {
+		buildOutput "watch" "./cmd/watch"
+		download "./bin"
+	} fs {
+		buildOutput "state" "./cmd/state"
+		download "./bin"
+	} fs {
+		buildOutput "button" "./cmd/button"
+		download "./bin"
+	} fs {
+		buildOutput "verifystate" "./cmd/verifystate"
+		download "./bin"
+	} fs {
+		buildOutput "spafilter" "./cmd/spafilter"
+		download "./bin"
+	} fs {
+		buildOutput "waterfall" "./cmd/waterfall"
+		download "./bin"
+	}
 }
 
 fs test() {
@@ -76,7 +79,7 @@ fs _goBuild(string name, string pkg) {
 		env "GOOS" "linux"
 		env "GOARCH" "arm"
 		env "GOARM" "7"
-		romount "/src" goSrc
+		romount "/src" cmdSrc(pkg)
 		goCache "/root"
 		mount scratch "/output" as buildOutput
 	}
@@ -104,7 +107,9 @@ fs libSrc() {
 
 fs cmdSrc(string cmd) {
 	libSrc
-	copy local(cmd) "/" "/"
+	copy fs {
+		local "." with includePatterns(cmd)
+	} "/" "/"
 }
 
 fs lintSrc() {

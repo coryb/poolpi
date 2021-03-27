@@ -2,10 +2,7 @@ syntax = "proto3";
 option go_package = "github.com/coryb/poolpi/pb";
 
 service Pool {
-    // rpc MonitorState(MonitorStateRequest) returns (stream MonitorStateResponse) {}
-    // rpc Messages(MessagesRequest) returns (stream MessagesResponse) {}
     rpc Events(stream KeyEvent) returns (stream Event) {}
-    // rpc Event(EventRequest) returns (EventResponse) {}
 }
 
 enum Key {

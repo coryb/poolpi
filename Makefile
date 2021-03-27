@@ -5,7 +5,7 @@ push: binaries
 	rsync -varH ./bin/ $(REMOTE_HOST):~/poolpi/. 
 
 binaries:
-	hlb run -t console -t poold -t watch -t state -t button --log-output plain
+	hlb run -t cmds --log-output plain
 
 lint:
 	hlb run -t lint --log-output plain
