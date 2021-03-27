@@ -3,7 +3,7 @@ Description=Run verifystate hourly during off hours
 
 [Timer]
 Unit=verifystate.service
-OnCalendar=*-*-* 0..8,6..23:00:00
+OnCalendar=*-*-* 0..8,18..23:00:00
 Persistent=false
 
 [Install]
