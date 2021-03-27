@@ -1,0 +1,10 @@
+[Unit]
+Description=Run waterfall daily
+
+[Timer]
+Unit=waterfall.service
+OnCalendar=*-*-* 11:00:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

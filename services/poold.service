@@ -1,0 +1,11 @@
+[Unit]
+Description=poold
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/home/pi/poolpi/poold
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=spafilter
+After=network.target
+Wants=spafilter.timer
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/poolpi/spafilter

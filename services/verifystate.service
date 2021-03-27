@@ -1,0 +1,8 @@
+[Unit]
+Description=verifystate
+After=network.target
+Wants=verifystate.timer
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/poolpi/verifystate

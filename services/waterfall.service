@@ -1,0 +1,8 @@
+[Unit]
+Description=waterfall
+After=network.target
+Wants=waterfall.timer
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/poolpi/waterfall

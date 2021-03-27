@@ -1,0 +1,10 @@
+[Unit]
+Description=Run spafilter daily
+
+[Timer]
+Unit=spafilter.service
+OnCalendar=*-*-* 10:00:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target
