@@ -5,9 +5,9 @@ import (
 	"flag"
 	"log"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/coryb/poolpi/events"
 	"github.com/coryb/poolpi/pb"
 	"google.golang.org/grpc"
 )
@@ -17,147 +17,105 @@ var (
 	duration   = flag.String("duration", "30m", "How long to filter the spa")
 )
 
+func fatalErr(err error) {
+	if err != nil {
+		log.Fatalf("ERROR: %s", err)
+	}
+}
+
 func main() {
 	flag.Parse()
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
 	opts = append(opts, grpc.WithBlock())
 	conn, err := grpc.Dial(*serverAddr, opts...)
-	if err != nil {
-		log.Fatalf("fail to dial: %v", err)
-	}
+	fatalErr(err)
 	defer conn.Close()
 
-	client := pb.NewPoolClient(conn)
-	stream, err := client.Events(context.Background())
-	if err != nil {
-		log.Fatalf("%v.Events(_) = _, %v", client, err)
-	}
+	ctx := context.Background()
+	client, err := events.NewClient(ctx, conn)
+	fatalErr(err)
 
-	current := currentState(stream)
-	if current.GetHeater1().GetActive() {
-		log.Printf("Heater on, skipping Spa filtering")
-		return
+	current, err := client.CurrentState()
+	fatalErr(err)
+	currentMap := current.Indicators()
+	for _, name := range []pb.IndicatorName{pb.Heater1, pb.Spa, pb.SystemOff, pb.Service} {
+		if ind, ok := currentMap[name]; ok && ind.GetActive() {
+			log.Printf("%s active, skipping Spa filtering", name)
+			return
+		}
 	}
 
 	offTime, err := time.ParseDuration(*duration)
-	if err != nil {
-		log.Fatalf("Failed to parse duration %q: %s", *duration, err)
-	}
-	end := time.After(offTime)
+	fatalErr(err)
 
 	// ensure Heater is disabled
-	menu(stream, "Default Menu")
-	keyUntil(stream, pb.Key_Right, "day")
-	keyUntil(stream, pb.Key_Right, "Air Temp")
-	msg := keyUntil(stream, pb.Key_Right, "Heater1")
+	err = client.KeyMenu(ctx, "Default Menu")
+	fatalErr(err)
+	msg, err := client.KeySequence(ctx,
+		[]events.KeyPrompt{
+			{Key: pb.Key_Right, Expected: "day"},
+			{Key: pb.Key_Right, Expected: "Heater1"},
+			{Key: pb.Key_Right, Expected: "Air Temp"},
+			{Key: pb.Key_Right, Expected: "Heater1"},
+		}...,
+	)
+	fatalErr(err)
 	for !strings.Contains(msg.Plain(), "Manual Off") {
-		msg = keyUntil(stream, pb.Key_Heater, "Heater1")
+		msg, err = client.KeyUntil(ctx, pb.Key_Heater, "Heater1")
+		fatalErr(err)
 	}
 
-	setSpaSpeed(stream, pb.Key_Minus, "50%")
+	setSpaSpeed(ctx, client, pb.Key_Minus, "50%")
 
-	stream.Send(&pb.KeyEvent{Key: pb.Key_PoolSpa})
+	err = client.Key(pb.Key_PoolSpa)
+	fatalErr(err)
 	log.Printf("Set Spa Mode")
 
 	// wait for the end time, meanwhile just print out the message events
-	done := false
-	for !done {
-		select {
-		case <-end:
-			done = true
-		default:
-			ev, err := stream.Recv()
-			if err != nil {
-				log.Printf("ERROR: %s", err)
-				done = true
-			}
-			if msg := ev.GetMessage(); msg != nil {
-				log.Printf("Message: %s", msg.Plain())
-			}
-		}
-	}
-	stream.Send(&pb.KeyEvent{Key: pb.Key_PoolSpa})
+	end, cancel := context.WithTimeout(ctx, offTime)
+	defer cancel()
+	err = client.Messages(end, func(m *pb.MessageEvent) {
+		log.Printf("Message: %s", m.Plain())
+	})
+
+	err = client.Key(pb.Key_PoolSpa)
+	fatalErr(err)
 	log.Printf("Set Pool Mode")
-	setSpaSpeed(stream, pb.Key_Plus, "90%")
+
+	setSpaSpeed(ctx, client, pb.Key_Plus, "90%")
 
 	// ensure Heater is back in Auto mode3
-	menu(stream, "Default Menu")
-	keyUntil(stream, pb.Key_Right, "day")
-	keyUntil(stream, pb.Key_Right, "Air Temp")
-	msg = keyUntil(stream, pb.Key_Right, "Heater1")
+	err = client.KeyMenu(ctx, "Default Menu")
+	fatalErr(err)
+
+	msg, err = client.KeySequence(ctx, []events.KeyPrompt{
+		{Key: pb.Key_Right, Expected: "day"},
+		{Key: pb.Key_Right, Expected: "Air Temp"},
+		{Key: pb.Key_Right, Expected: "Heater1"},
+	}...)
 	for !strings.Contains(msg.Plain(), "Auto") {
-		msg = keyUntil(stream, pb.Key_Heater, "Heater1")
+		msg, err = client.KeyUntil(ctx, pb.Key_Heater, "Heater1")
+		fatalErr(err)
 	}
 }
 
-func setSpaSpeed(stream pb.Pool_EventsClient, direction pb.Key, percent string) {
-	menu(stream, "Settings Menu")
-	keyUntil(stream, pb.Key_Right, "Spa Heater1")
-	keyUntil(stream, pb.Key_Right, "Pool Heater1")
-	keyUntil(stream, pb.Key_Right, "VSP Speed Settings")
-	keyUntil(stream, pb.Key_Plus, "Filter Speed1")
-	keyUntil(stream, pb.Key_Right, "Filter Speed2")
-	keyUntil(stream, pb.Key_Right, "Filter Speed3")
-	keyUntil(stream, pb.Key_Right, "Filter Speed4")
-	msg := keyUntil(stream, pb.Key_Right, "Spa Speed")
+func setSpaSpeed(ctx context.Context, c *events.Client, direction pb.Key, percent string) {
+	err := c.KeyMenu(ctx, "Settings Menu")
+	fatalErr(err)
+	msg, err := c.KeySequence(ctx, []events.KeyPrompt{
+		{Key: pb.Key_Right, Expected: "Spa Heater1"},
+		{Key: pb.Key_Right, Expected: "Pool Heater1"},
+		{Key: pb.Key_Right, Expected: "VSP Speed Settings"},
+		{Key: pb.Key_Plus, Expected: "Filter Speed1"},
+		{Key: pb.Key_Right, Expected: "Filter Speed2"},
+		{Key: pb.Key_Right, Expected: "Filter Speed3"},
+		{Key: pb.Key_Right, Expected: "Filter Speed4"},
+		{Key: pb.Key_Right, Expected: "Spa Speed"},
+	}...)
 	for !strings.Contains(msg.Plain(), percent) {
-		msg = keyUntil(stream, direction, "Spa Speed")
+		msg, err = c.KeyUntil(ctx, direction, "Spa Speed")
+		fatalErr(err)
 	}
 	log.Printf("Asserted Spa Speed: %s", percent)
-}
-
-func menu(stream pb.Pool_EventsClient, name string) {
-	for {
-		msg := keyUntil(stream, pb.Key_Menu, "Menu")
-		if strings.Contains(msg.Plain(), name) {
-			return
-		}
-	}
-}
-
-func keyUntil(stream pb.Pool_EventsClient, key pb.Key, expected string) (message *pb.MessageEvent) {
-	done := make(chan struct{})
-	var wg sync.WaitGroup
-	defer wg.Wait()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer close(done)
-		for {
-			ev, err := stream.Recv()
-			if err != nil {
-				log.Fatalf("ERROR: %s", err)
-			}
-			if msg := ev.GetMessage(); msg != nil {
-				log.Printf("Message: %s", msg.Plain())
-				if strings.Contains(msg.Plain(), expected) {
-					message = msg
-					return
-				}
-			}
-		}
-	}()
-
-	for {
-		stream.Send(&pb.KeyEvent{Key: key})
-		timeout := time.After(1000 * time.Millisecond)
-		select {
-		case <-done:
-			return
-		case <-timeout:
-		}
-	}
-}
-
-func currentState(stream pb.Pool_EventsClient) *pb.StateEvent {
-	for {
-		ev, err := stream.Recv()
-		if err != nil {
-			log.Fatalf("ERROR: %s", err)
-		}
-		if state := ev.GetState(); state != nil {
-			return state
-		}
-	}
 }

@@ -46,11 +46,5 @@ func main() {
 			log.Printf("|<--- %s", ev.Summary())
 		}
 	}()
-	// for _, note := range notes {
-	// 	if err := stream.Send(note); err != nil {
-	// 		log.Fatalf("Failed to send a note: %v", err)
-	// 	}
-	// }
-	// stream.CloseSend()
 	<-waitC
 }

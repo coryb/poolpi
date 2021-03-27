@@ -5,13 +5,19 @@ import (
 	"flag"
 	"log"
 
-	"github.com/coryb/poolpi/pb"
+	"github.com/coryb/poolpi/events"
 	"google.golang.org/grpc"
 )
 
 var (
 	serverAddr = flag.String("server_addr", "localhost:8888", "The server address in the format of host:port")
 )
+
+func fatalErr(err error) {
+	if err != nil {
+		log.Fatalf("ERROR: %s", err)
+	}
+}
 
 func main() {
 	flag.Parse()
@@ -23,23 +29,12 @@ func main() {
 		log.Fatalf("fail to dial: %v", err)
 	}
 	defer conn.Close()
-	client := pb.NewPoolClient(conn)
 
-	stream, err := client.Events(context.Background())
-	if err != nil {
-		log.Fatalf("%v.Events(_) = _, %v", client, err)
-	}
+	ctx := context.Background()
+	client, err := events.NewClient(ctx, conn)
+	fatalErr(err)
 
-	for {
-		ev, err := stream.Recv()
-		if err != nil {
-			log.Printf("ERROR: %s", err)
-			return
-		}
-		if state := ev.GetState(); state != nil {
-			log.Printf("Active: %s", state.Summary())
-			stream.CloseSend()
-			return
-		}
-	}
+	state, err := client.CurrentState()
+	fatalErr(err)
+	log.Print(state.Summary())
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/coryb/poolpi/events"
 	"github.com/coryb/poolpi/pb"
 	"google.golang.org/grpc"
 )
@@ -14,6 +15,12 @@ var (
 	serverAddr = flag.String("server_addr", "localhost:8888", "The server address in the format of host:port")
 )
 
+func fatalErr(err error) {
+	if err != nil {
+		log.Fatalf("ERROR: %s", err)
+	}
+}
+
 func main() {
 	flag.Parse()
 	key := os.Args[1]
@@ -21,6 +28,7 @@ func main() {
 	if !ok {
 		log.Fatalf("Invalid Key: %s", key)
 	}
+
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithInsecure())
 	opts = append(opts, grpc.WithBlock())
@@ -29,27 +37,15 @@ func main() {
 		log.Fatalf("fail to dial: %v", err)
 	}
 	defer conn.Close()
-	client := pb.NewPoolClient(conn)
 
-	stream, err := client.Events(context.Background())
-	if err != nil {
-		log.Fatalf("%v.Events(_) = _, %v", client, err)
-	}
+	ctx := context.Background()
+	client, err := events.NewClient(ctx, conn)
+	fatalErr(err)
 
-	stream.Send(&pb.KeyEvent{
-		Key: pb.Key(pbKey),
-	})
+	err = client.Key(pb.Key(pbKey))
+	fatalErr(err)
 
-	for {
-		ev, err := stream.Recv()
-		if err != nil {
-			log.Printf("ERROR: %s", err)
-			return
-		}
-		if state := ev.GetState(); state != nil {
-			log.Print(state.Summary())
-			stream.CloseSend()
-			return
-		}
-	}
+	state, err := client.CurrentState()
+	fatalErr(err)
+	log.Print(state.Summary())
 }
