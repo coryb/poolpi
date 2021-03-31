@@ -249,18 +249,16 @@ func (e Event) ToPB() *pb.Event {
 
 			}
 		}
-		if bytes.HasPrefix(e.Data, []byte{0x83, 0x0, 0x3}) {
-			// This is 2, just message
-			return &pb.Event{
-				Event: &pb.Event_MessageUpdate{
-					MessageUpdate: &pb.MessageUpdateEvent{
-						Message: &pb.MessageEvent{
-							Message: e.Data[3 : l-1],
-							Flags:   uint32(e.Data[l-1]),
-						},
+		// This is 2, just message
+		return &pb.Event{
+			Event: &pb.Event_MessageUpdate{
+				MessageUpdate: &pb.MessageUpdateEvent{
+					Message: &pb.MessageEvent{
+						Message: e.Data[3 : l-1],
+						Flags:   uint32(e.Data[l-1]),
 					},
 				},
-			}
+			},
 		}
 	default:
 		return &pb.Event{
