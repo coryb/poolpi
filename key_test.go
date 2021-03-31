@@ -7,7 +7,7 @@ import (
 )
 
 func TestEncodeKey(t *testing.T) {
-	for key, expected := range map[KeyType]string{
+	for key, expected := range map[Key]string{
 		KeyMinus:   "[10 02] [00 03] [10 00 00 00 00 10 00 00 00 00] [00 35] [10 03]",
 		KeyPlus:    "[10 02] [00 03] [20 00 00 00 20 00 00 00] [00 55] [10 03]",
 		KeyHeater:  "[10 02] [00 03] [00 00 04 00 00 00 04 00] [00 1d] [10 03]",

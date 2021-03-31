@@ -38,9 +38,9 @@ const (
 	EventUpdate      EventType = 0x040a
 	EventPumpRequest EventType = 0x0c01
 	EventPumpStatus  EventType = 0x000c
-	// EventLocalKey    EventType = 0x0002 // key press on main console
-	EventRemoteKey EventType = 0x0003 // key press on wired remote
-	// EventWirelessKey EventType = 0x0083 // key press on wireless remote
+	EventLocalKey    EventType = 0x0002 // key press on main console
+	EventRemoteKey   EventType = 0x0003 // key press on wired remote
+	EventWirelessKey EventType = 0x0083 // key press on wireless remote
 )
 
 func NewEventType(b []byte) EventType {
@@ -260,6 +260,34 @@ func (e Event) ToPB() *pb.Event {
 				},
 			},
 		}
+	case EventRemoteKey:
+		return &pb.Event{
+			Event: &pb.Event_Key{
+				Key: &pb.KeyEvent{
+					Key:    NewKey(e.Data).ToPB(),
+					Source: pb.KeySource_Remote,
+				},
+			},
+		}
+	case EventLocalKey:
+		return &pb.Event{
+			Event: &pb.Event_Key{
+				Key: &pb.KeyEvent{
+					Key:    NewKey(e.Data).ToPB(),
+					Source: pb.KeySource_Local,
+				},
+			},
+		}
+	case EventWirelessKey:
+		l := len(e.Data)
+		return &pb.Event{
+			Event: &pb.Event_Key{
+				Key: &pb.KeyEvent{
+					Key:    NewKey(e.Data[1 : l-1]).ToPB(),
+					Source: pb.KeySource_Wireless,
+				},
+			},
+		}
 	default:
 		return &pb.Event{
 			Event: &pb.Event_Unknown{
@@ -322,6 +350,24 @@ func EventFromPB(e *pb.Event) Event {
 				),
 				byte(ev.CurrentState.Message.Flags),
 			),
+		}
+	case *pb.Event_Key:
+		switch ev.Key.Source {
+		case pb.KeySource_Local:
+			return Event{
+				Type: EventLocalKey,
+				Data: KeyFromPB(ev.Key.Key).ToBytes(),
+			}
+		case pb.KeySource_Wireless:
+			return Event{
+				Type: EventWirelessKey,
+				Data: append(append([]byte{0x1}, KeyFromPB(ev.Key.Key).ToBytes()...), 0x0),
+			}
+		default:
+			return Event{
+				Type: EventRemoteKey,
+				Data: KeyFromPB(ev.Key.Key).ToBytes(),
+			}
 		}
 	case *pb.Event_Unknown:
 		return Event{

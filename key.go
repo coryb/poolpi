@@ -6,42 +6,42 @@ import (
 	"github.com/coryb/poolpi/pb"
 )
 
-type KeyType uint32
+type Key uint32
 
 const (
-	KeyNone    KeyType = 0x00000
-	KeyRight   KeyType = 0x00001
-	KeyMenu    KeyType = 0x00002
-	KeyLeft    KeyType = 0x00004
-	KeyService KeyType = 0x00008
-	KeyMinus   KeyType = 0x00010
-	KeyPlus    KeyType = 0x00020
-	KeyPoolSpa KeyType = 0x00040
-	KeyFilter  KeyType = 0x00080
-	KeyLights  KeyType = 0x00100
-	KeyAux1    KeyType = 0x00200
-	KeyAux2    KeyType = 0x00400
-	KeyAux3    KeyType = 0x00800
-	KeyAux4    KeyType = 0x01000
-	KeyAux5    KeyType = 0x02000
-	KeyAux6    KeyType = 0x04000
-	KeyAux7    KeyType = 0x08000
-	KeyValve3  KeyType = 0x10000
-	KeyValve4  KeyType = 0x20000
-	KeyHeater  KeyType = 0x40000
+	KeyNone    Key = 0x00000
+	KeyRight   Key = 0x00001
+	KeyMenu    Key = 0x00002
+	KeyLeft    Key = 0x00004
+	KeyService Key = 0x00008
+	KeyMinus   Key = 0x00010
+	KeyPlus    Key = 0x00020
+	KeyPoolSpa Key = 0x00040
+	KeyFilter  Key = 0x00080
+	KeyLights  Key = 0x00100
+	KeyAux1    Key = 0x00200
+	KeyAux2    Key = 0x00400
+	KeyAux3    Key = 0x00800
+	KeyAux4    Key = 0x01000
+	KeyAux5    Key = 0x02000
+	KeyAux6    Key = 0x04000
+	KeyAux7    Key = 0x08000
+	KeyValve3  Key = 0x10000
+	KeyValve4  Key = 0x20000
+	KeyHeater  Key = 0x40000
 )
 
-func NewKeyType(b []byte) KeyType {
-	return KeyType(binary.LittleEndian.Uint32(b[:4]))
+func NewKey(b []byte) Key {
+	return Key(binary.LittleEndian.Uint32(b[:4]))
 }
 
-func (kt KeyType) ToBytes() []byte {
+func (kt Key) ToBytes() []byte {
 	seq := make([]byte, 4)
 	binary.LittleEndian.PutUint32(seq, uint32(kt))
 	return seq
 }
 
-func (kt KeyType) ToEvent() Event {
+func (kt Key) ToEvent() Event {
 	data := kt.ToBytes()
 	return Event{
 		Type: EventRemoteKey,
@@ -50,7 +50,7 @@ func (kt KeyType) ToEvent() Event {
 	}
 }
 
-func KeyTypeFromPB(key pb.Key) KeyType {
+func KeyFromPB(key pb.Key) Key {
 	switch key {
 	case pb.Key_Right:
 		return KeyRight
@@ -94,7 +94,7 @@ func KeyTypeFromPB(key pb.Key) KeyType {
 	return KeyNone
 }
 
-func (kt KeyType) ToPB() pb.Key {
+func (kt Key) ToPB() pb.Key {
 	switch kt {
 	case KeyRight:
 		return pb.Key_Right
@@ -138,6 +138,6 @@ func (kt KeyType) ToPB() pb.Key {
 	return pb.Key_None
 }
 
-func (kt KeyType) String() string {
+func (kt Key) String() string {
 	return pb.Key_name[int32(kt.ToPB())]
 }

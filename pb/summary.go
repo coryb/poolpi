@@ -25,6 +25,8 @@ func (e *Event) Summary() string {
 		return "Update " + ev.StateUpdate.State.Summary()
 	case *Event_CurrentState:
 		return ev.CurrentState.State.Summary() + " " + ev.CurrentState.Message.Summary()
+	case *Event_Key:
+		return KeySource_name[int32(ev.Key.Source)] + " Key: " + Key_name[int32(ev.Key.Key)]
 	case *Event_Unknown:
 		return ev.Unknown.Summary()
 	}

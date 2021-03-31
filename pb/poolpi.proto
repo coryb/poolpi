@@ -28,8 +28,15 @@ enum Key {
     Heater  = 19;
 };
 
+enum KeySource {
+    Remote = 0;
+    Local = 1;
+    Wireless = 2;
+}
+
 message KeyEvent {
     Key Key = 1;
+    KeySource Source = 2;
 }
 
 message Event {
@@ -42,9 +49,7 @@ message Event {
         StateUpdateEvent StateUpdate = 6;
         MessageUpdateEvent MessageUpdate = 7;
         CurrentStateEvent CurrentState = 8;
-        // LocalKeyEvent?
-        // RemoteKeyEvent?
-        // WirelessKeyEvent?
+        KeyEvent Key = 9;
     }
 }
 
