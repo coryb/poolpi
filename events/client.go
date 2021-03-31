@@ -72,10 +72,10 @@ func (c *Client) KeyUntil(ctx context.Context, key pb.Key, expected string) (mes
 			if err != nil {
 				return fmt.Errorf("failed to read from event stream: %w", err)
 			}
-			if msg := ev.GetMessage(); msg != nil {
+			if msg := ev.GetMessageUpdate(); msg != nil {
 				log.Printf("Message: %s", msg.Plain())
 				if strings.Contains(msg.Plain(), expected) {
-					message = msg
+					message = msg.GetMessage()
 					cancel()
 					return nil
 				}

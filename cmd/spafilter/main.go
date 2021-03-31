@@ -36,9 +36,9 @@ func main() {
 	client, err := events.NewClient(ctx, conn)
 	fatalErr(err)
 
-	current, err := client.CurrentState()
+	state, err := client.CurrentState()
 	fatalErr(err)
-	currentMap := current.Indicators()
+	currentMap := state.Indicators()
 	for _, name := range []pb.IndicatorName{pb.Heater1, pb.Spa, pb.SystemOff, pb.Service} {
 		if ind, ok := currentMap[name]; ok && ind.GetActive() {
 			log.Printf("%s active, skipping Spa filtering", name)
@@ -68,8 +68,11 @@ func main() {
 
 	setSpaSpeed(ctx, client, pb.Key_Minus, "50%")
 
-	err = client.Key(pb.Key_PoolSpa)
-	fatalErr(err)
+	// Message: Spa Only
+	for !strings.Contains(msg.Plain(), "Spa Only") {
+		msg, err = client.KeyUntil(ctx, pb.Key_PoolSpa, "Only")
+		fatalErr(err)
+	}
 	log.Printf("Set Spa Mode")
 
 	// wait for the end time, meanwhile just print out the message events
@@ -79,8 +82,11 @@ func main() {
 		log.Printf("Message: %s", m.Plain())
 	})
 
-	err = client.Key(pb.Key_PoolSpa)
-	fatalErr(err)
+	// Message: Spa Only
+	for !strings.Contains(msg.Plain(), "Pool Only") {
+		msg, err = client.KeyUntil(ctx, pb.Key_PoolSpa, "Only")
+		fatalErr(err)
+	}
 	log.Printf("Set Pool Mode")
 
 	setSpaSpeed(ctx, client, pb.Key_Plus, "90%")

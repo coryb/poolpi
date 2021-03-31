@@ -6,12 +6,16 @@ import (
 	"io"
 	"log"
 
+	"github.com/coryb/poolpi"
 	"github.com/coryb/poolpi/pb"
 	"google.golang.org/grpc"
 )
 
 var (
 	serverAddr = flag.String("server_addr", "localhost:8888", "The server address in the format of host:port")
+	raw        = flag.Bool("raw", false, "Show raw uninterpreted content")
+	unknown    = flag.Bool("unknown", false, "Show only unknown events")
+	binary     = flag.Bool("binary", false, "show raw events in binary instead of hex")
 )
 
 func main() {
@@ -31,6 +35,10 @@ func main() {
 		log.Fatalf("%v.Events(_) = _, %v", client, err)
 	}
 
+	format := poolpi.FormatHex
+	if *binary {
+		format = poolpi.FormatBinary
+	}
 	waitC := make(chan struct{})
 	go func() {
 		for {
@@ -43,7 +51,14 @@ func main() {
 				}
 				return
 			}
-			log.Printf("|<--- %s", ev.Summary())
+			if _, ok := ev.Event.(*pb.Event_Unknown); *unknown && !ok {
+				continue
+			}
+			if *raw {
+				log.Printf("<--- %s", poolpi.EventFromPB(ev).Format(format))
+			} else {
+				log.Printf("|<--- %s", ev.Summary())
+			}
 		}
 	}()
 	<-waitC

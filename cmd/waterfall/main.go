@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/coryb/poolpi/events"
@@ -41,8 +42,18 @@ func main() {
 	offTime, err := time.ParseDuration(*duration)
 	fatalErr(err)
 
-	err = client.Key(pb.Key_Aux3)
+	state, err := client.CurrentState()
 	fatalErr(err)
+
+	if state.GetAux3().GetActive() {
+		log.Printf("Waterfall already active, quitting")
+	}
+
+	var msg *pb.MessageEvent
+	for !strings.Contains(msg.Plain(), "Waterfall: Turned On") {
+		msg, err = client.KeyUntil(ctx, pb.Key_Aux3, "Waterfall:")
+		fatalErr(err)
+	}
 	log.Printf("Waterfall started")
 
 	// wait for the end time, meanwhile just print out the message events
@@ -52,7 +63,9 @@ func main() {
 		log.Printf("Message: %s", m.Plain())
 	})
 
-	err = client.Key(pb.Key_Aux3)
-	fatalErr(err)
+	for !strings.Contains(msg.Plain(), "Waterfall: Turned Off") {
+		msg, err = client.KeyUntil(ctx, pb.Key_Aux3, "Waterfall:")
+		fatalErr(err)
+	}
 	log.Printf("Waterfall stopped")
 }

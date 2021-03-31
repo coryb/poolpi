@@ -18,8 +18,6 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PoolClient interface {
-	// rpc MonitorState(MonitorStateRequest) returns (stream MonitorStateResponse) {}
-	// rpc Messages(MessagesRequest) returns (stream MessagesResponse) {}
 	Events(ctx context.Context, opts ...grpc.CallOption) (Pool_EventsClient, error)
 }
 
@@ -66,8 +64,6 @@ func (x *poolEventsClient) Recv() (*Event, error) {
 // All implementations must embed UnimplementedPoolServer
 // for forward compatibility
 type PoolServer interface {
-	// rpc MonitorState(MonitorStateRequest) returns (stream MonitorStateResponse) {}
-	// rpc Messages(MessagesRequest) returns (stream MessagesResponse) {}
 	Events(Pool_EventsServer) error
 	mustEmbedUnimplementedPoolServer()
 }

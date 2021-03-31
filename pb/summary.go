@@ -19,6 +19,12 @@ func (e *Event) Summary() string {
 		return ev.PumpRequest.Summary()
 	case *Event_PumpStatus:
 		return ev.PumpStatus.Summary()
+	case *Event_MessageUpdate:
+		return "Update " + ev.MessageUpdate.Message.Summary()
+	case *Event_StateUpdate:
+		return "Update " + ev.StateUpdate.State.Summary()
+	case *Event_CurrentState:
+		return ev.CurrentState.State.Summary() + " " + ev.CurrentState.Message.Summary()
 	case *Event_Unknown:
 		return ev.Unknown.Summary()
 	}

@@ -10,13 +10,32 @@ import (
 	"github.com/coryb/poolpi/pb"
 )
 
+// Update Events have variable content with Maybe EventsLEDs and/or maybe EventMessage
+// DLE STX 04a0 83 00 STX EventsLEDs ETX EventMessage CRC DLE ETX
+// [10 02] [04 0a] [83 00 03 20 20 20 20 46 69 6c 74 65 72 20 53 70 65 65 64 20 20 20 20 20 20 20 20 20 20 20 20 4f 66 66 20 20 20 20 20 20 20 20 20 00] [09 58] [10 03]
+// [04 0a] [83 0 2 8 10 0 0 0 0 0 0] [00]
+
+// is 00 04 from heater????
+
+// [10 02] [04 07] [] [00 1d] [10 03]
+// [10 02] [00 04] [05] [00 1b] [10 03]
+// [10 02] [04 a0] [] [00 b6] [10 03]
+// [10 02] [00 04] [30 33 30 30 20] [00 f9] [10 03]
+// [10 02] [04 ae] [] [00 c4] [10 03]
+// [10 02] [00 04] [6f 4a] [00 cf] [10 03]
+
+// [10 02] [00 0c] [00 00 5a 16 49] [00 d7] [10 03] => 90% + 1649W
+// [10 02] [00 0c] [00 00 32 03 00] [00 53] [10 03] => 50% + 0300W
+
+// Pump speed request: 255%
+
 type EventType uint16
 
 const (
 	EventReady       EventType = 0x0101
 	EventLEDs        EventType = 0x0102
 	EventMessage     EventType = 0x0103
-	EventLongDisplay EventType = 0x040a
+	EventUpdate      EventType = 0x040a
 	EventPumpRequest EventType = 0x0c01
 	EventPumpStatus  EventType = 0x000c
 	// EventLocalKey    EventType = 0x0002 // key press on main console
@@ -46,38 +65,52 @@ func NewEvent(b []byte) Event {
 	}
 }
 
-func (e Event) Format() string {
+type BinaryFormat string
+
+const (
+	FormatHex    BinaryFormat = "[% x]"
+	FormatBinary BinaryFormat = "%08b"
+)
+
+func (e Event) Format(f BinaryFormat) string {
 	b := e.ToBytes()
 	l := len(b)
 	// Expected format: DLE+STX CMD[2] DATA[...] CRC[2] DLE+ETX
 
-	// special handling for message, last bit in data is "flags" also they use
-	// the high bit to indicate "blink".  For logging if not graphic char
-	// (excluding space) just print the hex value.
-	if e.Type == EventMessage {
-		data := []string{}
-		for _, c := range b[4 : l-5] {
-			highbit := c & 0x80
-			if unicode.In(rune(c&0x7f), unicode.L, unicode.M, unicode.N, unicode.P) {
-				s := string(c & 0x7f)
-				if highbit > 0 {
-					s = "*" + s
-				}
-				data = append(data, s)
-			} else {
-				data = append(data, fmt.Sprintf("%0x", c))
+	if e.Type == EventUpdate {
+		d := e.Data
+		if bytes.HasPrefix(d, []byte{0x83, 0x0, 0x3}) ||
+			(bytes.HasPrefix(d, []byte{0x83, 0x0, 0x2}) && len(d) > 12) {
+			text := ""
+			if l > (40 + 1 + 2 + 2) {
+				text = dataToTextIsh(b[l-(40+1+2+2) : l-5])
 			}
+			return fmt.Sprintf(
+				strings.ReplaceAll("[% x] [% x] F [%s] F [% x] [% x]", "F", string(f)),
+				b[:2],
+				b[2:4],
+				b[4:l-(40+1+2+2)],
+				text,
+				b[l-5:l-4],
+				b[l-4:l-2],
+				b[l-2:],
+			)
 		}
-		return fmt.Sprintf("[% x] [% x] [%s] [% x] [% x] [% x]",
+	}
+	if e.Type == EventMessage {
+		text := dataToTextIsh(b[4 : l-5])
+		return fmt.Sprintf(
+			strings.ReplaceAll("[% x] [% x] [%s] F [% x] [% x]", "F", string(f)),
 			b[:2],
 			b[2:4],
-			strings.Join(data, " "),
+			text,
 			b[l-5:l-4],
 			b[l-4:l-2],
 			b[l-2:],
 		)
 	}
-	return fmt.Sprintf("[% x] [% x] [% x] [% x] [% x]",
+	return fmt.Sprintf(
+		strings.ReplaceAll("[% x] [% x] F [% x] [% x]", "F", string(f)),
 		b[:2],
 		b[2:4],
 		b[4:l-4],
@@ -86,11 +119,34 @@ func (e Event) Format() string {
 	)
 }
 
+// dataToTextIsh will attempt to decode special ascii characters in the data
+// for one of the message events.  For messages the last bit in data is "flags"
+// also they use the high bit to indicate "blink".  For logging if not graphic
+// char (excluding space) just print the hex value.
+func dataToTextIsh(b []byte) string {
+	data := []string{}
+	for _, c := range b {
+		highbit := c & 0x80
+		if unicode.In(rune(c&0x7f), unicode.L, unicode.M, unicode.N, unicode.P) {
+			s := string(c & 0x7f)
+			if highbit > 0 {
+				s = "*" + s
+			}
+			data = append(data, s)
+		} else if unicode.In(rune(c&0x7f), unicode.Space) {
+			data = append(data, ".")
+		} else {
+			data = append(data, fmt.Sprintf("%0x", c))
+		}
+	}
+	return strings.Join(data, " ")
+}
+
 func (e Event) Summary() string {
 	if s := e.ToPB().Summary(); s != "" {
 		return s
 	}
-	return e.Format()
+	return e.Format(FormatHex)
 }
 
 func escDLE(in []byte) []byte {
@@ -124,15 +180,16 @@ func (e Event) ToPB() *pb.Event {
 	case EventLEDs:
 		return &pb.Event{
 			Event: &pb.Event_State{
-				State: e.toStateEvent(),
+				State: toStateEvent(e.Data[:4], e.Data[4:8]),
 			},
 		}
 	case EventMessage:
+		l := len(e.Data)
 		return &pb.Event{
 			Event: &pb.Event_Message{
 				Message: &pb.MessageEvent{
-					Message: e.Data[:len(e.Data)-1],
-					Flags:   uint32(e.Data[len(e.Data)-1]),
+					Message: e.Data[:l-1],
+					Flags:   uint32(e.Data[l-1]),
 				},
 			},
 		}
@@ -156,8 +213,54 @@ func (e Event) ToPB() *pb.Event {
 				PumpStatus: &pb.PumpStatusEvent{
 					SpeedPercent: uint32(speed),
 					PowerWatts:   uint32(power),
+					RawData:      e.Data,
 				},
 			},
+		}
+	case EventUpdate:
+		l := len(e.Data)
+		// one of:
+		// 1) [83 0 2 EventLEDs 3 EventMessage]
+		// 2) [83 0 3 EventMessage]
+		// 3) [83 0 2 EventLEDs]
+		if bytes.HasPrefix(e.Data, []byte{0x83, 0x0, 0x2}) {
+			if l == 3+8 {
+				// This is 3, just state
+				return &pb.Event{
+					Event: &pb.Event_StateUpdate{
+						StateUpdate: &pb.StateUpdateEvent{
+							State: toStateEvent(e.Data[3:7], e.Data[7:11]),
+						},
+					},
+				}
+			} else {
+				// This is 1, state + message
+				return &pb.Event{
+					Event: &pb.Event_CurrentState{
+						CurrentState: &pb.CurrentStateEvent{
+							State: toStateEvent(e.Data[3:7], e.Data[7:11]),
+							Message: &pb.MessageEvent{
+								Message: e.Data[12 : l-1],
+								Flags:   uint32(e.Data[l-1]),
+							},
+						},
+					},
+				}
+
+			}
+		}
+		if bytes.HasPrefix(e.Data, []byte{0x83, 0x0, 0x3}) {
+			// This is 2, just message
+			return &pb.Event{
+				Event: &pb.Event_MessageUpdate{
+					MessageUpdate: &pb.MessageUpdateEvent{
+						Message: &pb.MessageEvent{
+							Message: e.Data[3 : l-1],
+							Flags:   uint32(e.Data[l-1]),
+						},
+					},
+				},
+			}
 		}
 	default:
 		return &pb.Event{
@@ -171,14 +274,68 @@ func (e Event) ToPB() *pb.Event {
 	}
 }
 
-func (e Event) toStateEvent() *pb.StateEvent {
-	if e.Type != EventLEDs {
-		return nil
+func EventFromPB(e *pb.Event) Event {
+	switch ev := e.Event.(type) {
+	case *pb.Event_State:
+		return fromStateEvent(ev.State)
+	case *pb.Event_Message:
+		return Event{
+			Type: EventMessage,
+			Data: append(ev.Message.Message, byte(ev.Message.Flags)),
+		}
+	case *pb.Event_PumpRequest:
+		data := make([]byte, 2)
+		binary.BigEndian.PutUint16(data, uint16(ev.PumpRequest.SpeedPercent))
+		return Event{
+			Type: EventPumpRequest,
+			Data: data,
+		}
+	case *pb.Event_PumpStatus:
+		return Event{
+			Type: EventPumpStatus,
+			Data: ev.PumpStatus.RawData,
+		}
+	case *pb.Event_MessageUpdate:
+		return Event{
+			Type: EventUpdate,
+			Data: append(
+				append([]byte{0x83, 0x0, 0x3}, ev.MessageUpdate.Message.Message...),
+				byte(ev.MessageUpdate.Message.Flags),
+			),
+		}
+	case *pb.Event_StateUpdate:
+		tmp := fromStateEvent(ev.StateUpdate.State)
+		return Event{
+			Type: EventUpdate,
+			Data: append([]byte{0x83, 0x0, 0x2}, tmp.Data...),
+		}
+	case *pb.Event_CurrentState:
+		stateTmp := fromStateEvent(ev.CurrentState.State)
+		return Event{
+			Type: EventUpdate,
+			Data: append(
+				append(
+					append(
+						append(
+							append([]byte{0x83, 0x0, 0x2}, stateTmp.Data...),
+							0x03),
+					),
+					ev.CurrentState.Message.Message...,
+				),
+				byte(ev.CurrentState.Message.Flags),
+			),
+		}
+	case *pb.Event_Unknown:
+		return Event{
+			Type: NewEventType(ev.Unknown.Type),
+			Data: ev.Unknown.Data,
+		}
+	default:
+		panic("Invalid proto event")
 	}
+}
 
-	active := e.Data[:4]
-	blinking := e.Data[4:8]
-
+func toStateEvent(active []byte, blinking []byte) *pb.StateEvent {
 	state := pb.StateEvent{}
 	bitmasks := [4][8]**pb.Indicator{{
 		&state.Heater1, &state.Valve3, &state.CheckSystem, &state.Pool, &state.Spa, &state.Filter, &state.Lights, &state.Aux1,
@@ -200,4 +357,34 @@ func (e Event) toStateEvent() *pb.StateEvent {
 		}
 	}
 	return &state
+}
+
+func fromStateEvent(state *pb.StateEvent) Event {
+	e := Event{
+		Type: EventLEDs,
+		Data: make([]byte, 8),
+	}
+	bitmasks := [4][8]**pb.Indicator{{
+		&state.Heater1, &state.Valve3, &state.CheckSystem, &state.Pool, &state.Spa, &state.Filter, &state.Lights, &state.Aux1,
+	}, {
+		&state.Aux2, &state.Service, &state.Aux3, &state.Aux4, &state.Aux5, &state.Aux6, &state.Valve4, &state.Spillover,
+	}, {
+		&state.SystemOff, &state.Aux7, &state.Aux8, &state.Aux9, &state.Aux10, &state.Aux11, &state.Aux12, &state.Aux13,
+	}, {
+		&state.Aux14, &state.SuperChlorinate,
+	}}
+	for byteIx, bitmask := range bitmasks {
+		for bitIx, indicator := range bitmask {
+			if indicator == nil {
+				continue
+			}
+			if (*indicator).GetActive() {
+				e.Data[byteIx] |= 0b1 << bitIx
+			}
+			if (*indicator).GetCaution() {
+				e.Data[byteIx+4] |= 0b1 << bitIx
+			}
+		}
+	}
+	return e
 }

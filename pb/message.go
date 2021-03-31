@@ -6,32 +6,27 @@ import (
 	"github.com/logrusorgru/aurora/v3"
 )
 
-func (m *MessageEvent) lineWidth() int {
-	if m == nil || len(m.Message)%16 == 0 {
-		return 16
-	}
-	return 20
+func (m *MessageEvent) Plain() string {
+	return plain(m.GetMessage())
 }
 
-func (m *MessageEvent) joinSeparator() string {
-	// Most lines are some Name on the top line then a Value on the 2nd line,
-	// so we want `Name: Value` but menu names are the edge case where we want
-	// `Settings Menu`
-	if bytes.Contains(m.Message, []byte("Menu")) {
-		return " "
-	}
-	return ": "
+func (m *MessageEvent) Fancy() string {
+	return fancy(m.GetMessage())
 }
 
-func (m *MessageEvent) Plain() (text string) {
-	if m == nil {
-		return ""
-	}
+func (m *MessageUpdateEvent) Plain() string {
+	return plain(m.GetMessage().GetMessage())
+}
 
-	joinText := m.joinSeparator()
-	width := m.lineWidth()
-	for i := 0; i < len(m.Message); i += width {
-		line := bytes.TrimSpace(m.Message[i : i+width])
+func (m *MessageUpdateEvent) Fancy() string {
+	return fancy(m.GetMessage().GetMessage())
+}
+
+func plain(b []byte) (text string) {
+	joinText := joinSeparator(b)
+	width := lineWidth(b)
+	for i := 0; i < len(b); i += width {
+		line := bytes.TrimSpace(b[i : i+width])
 		if len(line) == 0 {
 			continue
 		}
@@ -45,15 +40,11 @@ func (m *MessageEvent) Plain() (text string) {
 	return text
 }
 
-func (m *MessageEvent) Fancy() (text string) {
-	if m == nil {
-		return ""
-	}
-
-	joinText := m.joinSeparator()
-	width := m.lineWidth()
-	for i := 0; i < len(m.Message); i += width {
-		line := bytes.TrimSpace(m.Message[i : i+width])
+func fancy(b []byte) (text string) {
+	joinText := joinSeparator(b)
+	width := lineWidth(b)
+	for i := 0; i < len(b); i += width {
+		line := bytes.TrimSpace(b[i : i+width])
 		if len(line) == 0 {
 			continue
 		}
@@ -73,4 +64,21 @@ func (m *MessageEvent) Fancy() (text string) {
 		}
 	}
 	return text
+}
+
+func lineWidth(b []byte) int {
+	if len(b)%16 == 0 {
+		return 16
+	}
+	return 20
+}
+
+func joinSeparator(b []byte) string {
+	// Most lines are some Name on the top line then a Value on the 2nd line,
+	// so we want `Name: Value` but menu names are the edge case where we want
+	// `Settings Menu`
+	if bytes.Contains(b, []byte("Menu")) {
+		return " "
+	}
+	return ": "
 }

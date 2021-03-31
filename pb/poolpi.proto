@@ -39,6 +39,9 @@ message Event {
         MessageEvent Message = 3;
         PumpRequestEvent PumpRequest = 4;
         PumpStatusEvent PumpStatus = 5;
+        StateUpdateEvent StateUpdate = 6;
+        MessageUpdateEvent MessageUpdate = 7;
+        CurrentStateEvent CurrentState = 8;
         // LocalKeyEvent?
         // RemoteKeyEvent?
         // WirelessKeyEvent?
@@ -91,6 +94,20 @@ message PumpRequestEvent {
 message PumpStatusEvent {
     uint32 SpeedPercent = 1;
     uint32 PowerWatts = 2;
+    bytes RawData = 3; // Helper for recreating the wire protocol
+}
+
+message StateUpdateEvent {
+    StateEvent State = 1;
+}
+
+message MessageUpdateEvent {
+    MessageEvent Message = 2;
+}
+
+message CurrentStateEvent {
+    StateEvent State = 1;
+    MessageEvent Message = 2;
 }
 
 message UnknownEvent {

@@ -37,9 +37,6 @@ func main() {
 	}
 
 	unsubscribe := sys.Subscribe(func(e poolpi.Event) {
-		if e.Type == poolpi.EventLongDisplay {
-			return
-		}
 		log.Printf("|<--- %s", e.Summary())
 	})
 

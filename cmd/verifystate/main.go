@@ -199,15 +199,18 @@ func isFocused(f Focus, msg *pb.MessageEvent) bool {
 	words := bytes.Fields(line2)
 	switch f {
 	case FocusDay:
-		log.Printf("Day Focused")
-		return words[0][0]&0x80 > 0
+		focused := words[0][0]&0x80 > 0
+		log.Printf("Day Focused: %t", focused)
+		return focused
 	case FocusHour:
-		log.Printf("Hour Focused")
-		return words[1][0]&0x80 > 0
+		focused := words[1][0]&0x80 > 0
+		log.Printf("Hour Focused: %t", focused)
+		return focused
 	case FocusMinute:
-		log.Printf("Minute Focused")
 		split := bytes.Split(words[1], []byte{':'})
-		return split[1][0]&0x80 > 0
+		focused := split[1][0]&0x80 > 0
+		log.Printf("Minute Focused: %t", focused)
+		return focused
 	}
 	return false
 }
