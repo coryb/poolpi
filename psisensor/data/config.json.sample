@@ -1,0 +1,5 @@
+{
+  "ssid": "MYNETWORK",
+  "password": "MYPASSWORD",
+  "influxdb": "http://myinfluxdb.example.com:8096/write?db=pool"
+}
