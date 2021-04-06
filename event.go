@@ -29,6 +29,34 @@ import (
 
 // Pump speed request: 255%
 
+// Set at 15% (to chlorinator) 10 02 50 11 0f 82 10 03
+// Reply from chlorinator 10 02 00 12 40 00 64 10 03
+// So the 12 byte (0f) is the percentage directly converted...
+
+// 20%
+// 10 02 50 11 14 87 10 03
+// 10 02 00 12 40 00 64 10 03
+
+// Superchlorinate:
+// 10 02 50 11 65 d8 10 03
+// 10 02 00 12 40 00 64 10 03
+
+// Filter
+// 10 2 0 5 2 0 2 0 7F 0 9A 10 3 On
+// 10 2 0 5 0 2 0 2 7F 0 9A 10 3 Off
+
+// Lights
+// 10 2 0 5 20 0 20 0 7F 0 D6 10 3 On
+// 10 2 0 5 0 20 0 20 7F 0 D6 10 3 Off
+
+// Cleaner
+// 10 2 0 5 10 0 0 10 0 0 7F 0 B6 10 3 On
+// 10 2 0 5 0 10 0 0 10 0 7F 0 B6 10 3 off
+
+// Waterfall
+// 10 2 0 5 8 0 8 0 7F 0 A6 10 3 On
+// 10 2 0 5 0 8 0 8 7F 0 A6 10 3 Off
+
 type EventType uint16
 
 const (

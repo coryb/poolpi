@@ -41,12 +41,27 @@ func (kt Key) ToBytes() []byte {
 	return seq
 }
 
-func (kt Key) ToEvent() Event {
+func (kt Key) ToEvent(t EventType) Event {
 	data := kt.ToBytes()
-	return Event{
-		Type: EventRemoteKey,
-		// repeat key bytes twice for protocol
-		Data: append(data, data...),
+	switch t {
+	case EventLocalKey:
+		return Event{
+			Type: t,
+			// repeat key bytes twice for protocol
+			Data: append(data, data...),
+		}
+	case EventWirelessKey:
+		return Event{
+			Type: t,
+			// repeat key bytes twice for protocol
+			Data: append(append(append([]byte{0x1}, data...), data...), 0x0),
+		}
+	default:
+		return Event{
+			Type: EventRemoteKey,
+			// repeat key bytes twice for protocol
+			Data: append(data, data...),
+		}
 	}
 }
 

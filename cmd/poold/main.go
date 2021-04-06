@@ -70,7 +70,7 @@ func (s *poolServer) Events(stream pb.Pool_EventsServer) error {
 				return err
 			}
 			key := poolpi.KeyFromPB(pbKey.Key)
-			s.pool.Send(key.ToEvent())
+			s.pool.Send(key.ToEvent(poolpi.EventRemoteKey))
 			log.Printf("|---> Key %s", key.String())
 		}
 	})

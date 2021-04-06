@@ -29,7 +29,7 @@ func TestEncodeKey(t *testing.T) {
 	} {
 		key, expected := key, expected // make lexical
 		t.Run(key.String(), func(t *testing.T) {
-			got := key.ToEvent().Format(FormatHex)
+			got := key.ToEvent(EventRemoteKey).Format(FormatHex)
 			require.Equal(t, expected, got)
 		})
 	}
